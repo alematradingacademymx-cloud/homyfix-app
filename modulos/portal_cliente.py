@@ -62,7 +62,13 @@ def pagina():
                     tecnico = tecnico[tecnico.tecnico_id == fila.tecnico_id]
                     if not tecnico.empty:
                         t = tecnico.iloc[0]
-                        st.caption(f"Técnico asignado: {t.nombre} · Costo acordado: ${fila.costo_reparacion}")
+                        foto = t.get("foto_perfil_url") if hasattr(t, "get") else None
+                        if foto:
+                            c1, c2 = st.columns([1, 4])
+                            c1.image(foto, width=80)
+                            c2.caption(f"Técnico asignado: {t.nombre} · Costo acordado: ${fila.costo_reparacion}")
+                        else:
+                            st.caption(f"Técnico asignado: {t.nombre} · Costo acordado: ${fila.costo_reparacion}")
 
                 if fila.estatus == "Completado":
                     etiqueta = "¿Cómo calificarías la visita y la compostura?" if fila.tipo_cotizacion == "Visita" else "¿Cómo calificarías la compostura?"

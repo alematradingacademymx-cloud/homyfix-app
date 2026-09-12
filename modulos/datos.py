@@ -108,3 +108,28 @@ def cerrar_puja(solicitud_id):
 
 def calificar_solicitud(solicitud_id, calificacion):
     return _backend().calificar_solicitud(solicitud_id, calificacion)
+
+
+def enviar_solicitud_registro(tipo, nombre, correo, telefono, direccion=None, edad=None,
+                               especialidad=None, experiencia=None, herramienta=None,
+                               documentos=None):
+    return _backend().enviar_solicitud_registro(
+        tipo, nombre, correo, telefono, direccion, edad,
+        especialidad, experiencia, herramienta, documentos,
+    )
+
+
+def obtener_solicitudes_registro(estatus="Pendiente"):
+    return _backend().obtener_solicitudes_registro(estatus)
+
+
+def aprobar_solicitud_registro(registro_id):
+    return _backend().aprobar_solicitud_registro(registro_id)
+
+
+def rechazar_solicitud_registro(registro_id):
+    return _backend().rechazar_solicitud_registro(registro_id)
+
+
+def canjear_codigo(codigo, usuario, password):
+    return _backend().canjear_codigo(codigo, usuario, password)
