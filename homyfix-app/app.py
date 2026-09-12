@@ -2,16 +2,17 @@ import streamlit as st
 
 from modulos.config import (
     inicializar_session_state, iniciar_sesion, cerrar_sesion,
-    ADMIN_OPERATIVO, ADMIN_SOCIO, TECNICO, CLIENTE, USUARIOS_DEMO,
+    ADMIN_OPERATIVO, ADMIN_SOCIO, TECNICO, CLIENTE,
 )
 from modulos.estilos import aplicar_estilos
-from modulos.datos_demo import inicializar_datos
+from modulos import datos
+from modulos.datos_demo import USUARIOS_DEMO
 from modulos import admin_operativo, admin_socio, portal_tecnico, portal_cliente
 
 st.set_page_config(page_title="Homyfix", page_icon="🧰", layout="wide")
 
 inicializar_session_state()
-inicializar_datos()
+datos.inicializar_datos()
 aplicar_estilos()
 
 
@@ -33,9 +34,10 @@ def pantalla_login():
                 else:
                     st.error("Usuario o contraseña incorrectos")
 
-        with st.expander("Usuarios de demostración (fase beta)"):
-            for u, datos_u in USUARIOS_DEMO.items():
-                st.caption(f"**{datos_u['rol']}** · usuario: `{u}` · contraseña: `{datos_u['password']}`")
+        if not datos.usando_sheets():
+            with st.expander("Usuarios de demostración (fase beta, sin Google Sheets configurado)"):
+                for u, datos_u in USUARIOS_DEMO.items():
+                    st.caption(f"**{datos_u['rol']}** · usuario: `{u}` · contraseña: `{datos_u['password']}`")
 
 
 def app_autenticada():

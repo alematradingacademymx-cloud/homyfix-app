@@ -50,26 +50,52 @@ streamlit run app.py
 3. Despliega en Streamlit Community Cloud apuntando a `app.py` — igual que
    hiciste con el portal educativo.
 
-## Siguiente paso: pasar de datos en memoria a Google Sheets
+## Conectar Google Sheets (ya implementado, falta tu parte de configuración)
 
-Cuando quieras que los datos persistan de verdad (no se reinicien cada vez),
-el patrón a seguir es el mismo que ya usas y ya sabes que funciona en tu
-organización (Apps Script como mini-API, porque la creación de llaves de
-cuenta de servicio está bloqueada por política del Workspace):
+Ya está el código: `modulos/datos.py` decide solo si usar Google Sheets
+(`modulos/datos_sheets.py`) o los datos de ejemplo en memoria
+(`modulos/datos_demo.py`), según si encuentra la sección `[homyfix]` en
+`st.secrets`. El resto de la app no cambia nada. Te toca la parte de Google,
+igual que hiciste con `ALEMA_API_Candados`:
 
-1. Crear un Google Sheet "HOMYFIX_BD" con pestañas: `Usuarios`, `Tecnicos`,
-   `Solicitudes`.
-2. Crear un Apps Script desplegado como Web App (igual que
-   `ALEMA_API_Candados`) con acciones tipo `crear_solicitud`,
-   `asignar_tecnico`, `actualizar_estatus`, `agregar_tecnico`, etc.
-3. Reemplazar, una por una, las funciones de `modulos/datos_demo.py`
-   (`obtener_tecnicos`, `crear_solicitud`, `asignar_tecnico`, ...) por llamadas
-   `requests.post(...)` a esa Web App. El resto de la app (los 4 paneles) no
-   debería necesitar cambios porque ya solo habla con esas funciones, nunca
-   directamente con la estructura de datos.
-4. Las contraseñas de los 4 roles pasan de `modulos/config.py` a una pestaña
-   `Usuarios` en el Sheet (con hash bcrypt, igual que ya hiciste en el portal
-   educativo).
+1. Crea un Google Sheet nuevo llamado **HOMYFIX_BD** (vacío, las pestañas se
+   crean solas la primera vez que se usan).
+2. En ese Sheet: **Extensiones → Apps Script**, borra lo que haya en
+   `Code.gs` y pega el contenido de `apps_script/Code.gs` de este repo.
+3. En la primera línea del script cambia `TOKEN_SECRETO` por uno que
+   inventes tú (cualquier texto/número largo, es tu contraseña de API).
+4. **Implementar → Nueva implementación** → tipo *Aplicación web* → Ejecutar
+   como *Yo* → Quién tiene acceso *Cualquier usuario* → Implementar. Te va a
+   pedir autorizar permisos (es tu propio script, dale que sí). Copia la URL
+   que termina en `/exec`.
+5. En ese mismo Sheet, crea manualmente la pestaña **Usuarios** con columnas
+   `Usuario | Password | Rol | Nombre | TecnicoID | ClienteID` y da de alta
+   ahí a tu admin operativo, admin socio, y a cada técnico/cliente real (Rol
+   debe ser exactamente `ADMIN_OPERATIVO`, `ADMIN_SOCIO`, `TECNICO` o
+   `CLIENTE`; TecnicoID/ClienteID solo aplican para esos roles y deben
+   coincidir con el TecnicoID que uses en la pestaña Tecnicos).
+6. En Streamlit Cloud: tu app → **Settings → Secrets**, pega esto (con tus
+   valores reales):
+
+   ```toml
+   [homyfix]
+   api_url = "https://script.google.com/macros/s/TU_ID/exec"
+   token = "el-mismo-token-que-pusiste-en-el-script"
+   ```
+
+   Para probarlo en tu computadora antes, copia `.streamlit/secrets.toml.example`
+   como `.streamlit/secrets.toml` (ese archivo no se sube a GitHub) y pon ahí
+   los mismos valores.
+
+7. Guarda los secrets y reinicia la app (Streamlit Cloud lo hace solo). En
+   cuanto detecta `[homyfix]`, deja de usar los usuarios de demostración —
+   solo entran los que tú diste de alta en la pestaña Usuarios — y todo lo
+   que pase en la app (altas de técnico, solicitudes, calificaciones) queda
+   guardado en el Sheet.
+
+Las contraseñas de esta primera versión quedan en texto plano en la pestaña
+Usuarios (para arrancar rápido); cuando quieras, aplicamos la misma migración
+gradual a bcrypt que ya hiciste en el portal educativo.
 
 ## Siguiente paso: landing page pública
 

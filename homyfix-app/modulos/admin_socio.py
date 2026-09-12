@@ -1,5 +1,5 @@
 import streamlit as st
-from modulos import datos_demo as datos
+from modulos import datos
 from modulos.estilos import encabezado
 
 MEMBRESIA_MXN = 150

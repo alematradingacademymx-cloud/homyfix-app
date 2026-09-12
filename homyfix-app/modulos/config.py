@@ -17,15 +17,6 @@ CLIENTE = "CLIENTE"
 
 ROLES_ADMIN = (ADMIN_OPERATIVO, ADMIN_SOCIO)
 
-# --- Usuarios de demostración (fase beta) ---
-# usuario -> {password, rol, nombre, tecnico_id (solo si rol=TECNICO)}
-USUARIOS_DEMO = {
-    "admin.operativo": {"password": "admin123", "rol": ADMIN_OPERATIVO, "nombre": "Admin Operativo"},
-    "admin.socio": {"password": "socio123", "rol": ADMIN_SOCIO, "nombre": "Socio Homyfix"},
-    "carlos.plomero": {"password": "tec123", "rol": TECNICO, "nombre": "Carlos (Plomero)", "tecnico_id": "T-001"},
-    "martha.cliente": {"password": "cli123", "rol": CLIENTE, "nombre": "Sra. Martha", "cliente_id": "C-001"},
-}
-
 
 def inicializar_session_state():
     defaults = {
@@ -42,15 +33,16 @@ def inicializar_session_state():
 
 
 def iniciar_sesion(usuario: str, password: str) -> bool:
-    datos = USUARIOS_DEMO.get(usuario.strip().lower())
-    if not datos or datos["password"] != password:
+    from modulos import datos as capa_datos
+    resultado = capa_datos.autenticar(usuario, password)
+    if not resultado:
         return False
     st.session_state.autenticado = True
     st.session_state.usuario = usuario
-    st.session_state.rol = datos["rol"]
-    st.session_state.nombre = datos["nombre"]
-    st.session_state.tecnico_id = datos.get("tecnico_id")
-    st.session_state.cliente_id = datos.get("cliente_id")
+    st.session_state.rol = resultado["rol"]
+    st.session_state.nombre = resultado["nombre"]
+    st.session_state.tecnico_id = resultado.get("tecnico_id")
+    st.session_state.cliente_id = resultado.get("cliente_id")
     return True
 
 

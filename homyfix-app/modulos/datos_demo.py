@@ -21,6 +21,27 @@ import streamlit as st
 ESTATUS_SOLICITUD = ["Pendiente", "Asignado", "En curso", "Completado", "Calificado", "Cancelado"]
 ESTATUS_TECNICO = ["Pendiente de validación", "Activo", "Suspendido"]
 
+# Usuarios de demostración (solo se usan si NO hay Google Sheets configurado,
+# ver modulos/datos.py). usuario -> {password, rol, nombre, tecnico_id/cliente_id}
+USUARIOS_DEMO = {
+    "admin.operativo": {"password": "admin123", "rol": "ADMIN_OPERATIVO", "nombre": "Admin Operativo"},
+    "admin.socio": {"password": "socio123", "rol": "ADMIN_SOCIO", "nombre": "Socio Homyfix"},
+    "carlos.plomero": {"password": "tec123", "rol": "TECNICO", "nombre": "Carlos (Plomero)", "tecnico_id": "T-001"},
+    "martha.cliente": {"password": "cli123", "rol": "CLIENTE", "nombre": "Sra. Martha", "cliente_id": "C-001"},
+}
+
+
+def autenticar(usuario, password):
+    datos_usuario = USUARIOS_DEMO.get((usuario or "").strip().lower())
+    if not datos_usuario or datos_usuario["password"] != password:
+        return None
+    return {
+        "rol": datos_usuario["rol"],
+        "nombre": datos_usuario["nombre"],
+        "tecnico_id": datos_usuario.get("tecnico_id"),
+        "cliente_id": datos_usuario.get("cliente_id"),
+    }
+
 
 def _semilla_tecnicos():
     return pd.DataFrame([
