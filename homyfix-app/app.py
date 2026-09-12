@@ -7,7 +7,7 @@ from modulos.config import (
 from modulos.estilos import aplicar_estilos
 from modulos import datos
 from modulos.datos_demo import USUARIOS_DEMO
-from modulos import admin_operativo, admin_socio, portal_tecnico, portal_cliente
+from modulos import admin_operativo, admin_socio, portal_tecnico, portal_cliente, registro
 
 st.set_page_config(page_title="Homyfix", page_icon="🧰", layout="wide")
 
@@ -33,6 +33,19 @@ def pantalla_login():
                     st.rerun()
                 else:
                     st.error("Usuario o contraseña incorrectos")
+
+        st.divider()
+        st.caption("¿Aún no tienes cuenta?")
+        c1, c2 = st.columns(2)
+        if c1.button("🧰 Quiero ser técnico", use_container_width=True):
+            st.session_state.vista_publica = "registro_tecnico"
+            st.rerun()
+        if c2.button("🏠 Quiero ser cliente", use_container_width=True):
+            st.session_state.vista_publica = "registro_cliente"
+            st.rerun()
+        if st.button("🔑 Ya tengo un código de acceso", use_container_width=True):
+            st.session_state.vista_publica = "canjear"
+            st.rerun()
 
         if not datos.usando_sheets():
             with st.expander("Usuarios de demostración (fase beta, sin Google Sheets configurado)"):
@@ -63,6 +76,15 @@ def app_autenticada():
 
 
 if not st.session_state.autenticado:
-    pantalla_login()
+    st.session_state.setdefault("vista_publica", "login")
+    vista = st.session_state.vista_publica
+    if vista == "registro_tecnico":
+        registro.formulario_tecnico()
+    elif vista == "registro_cliente":
+        registro.formulario_cliente()
+    elif vista == "canjear":
+        registro.formulario_canjear()
+    else:
+        pantalla_login()
 else:
     app_autenticada()

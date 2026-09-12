@@ -8,7 +8,14 @@ MEMBRESIA_MXN = 150
 def pagina():
     encabezado("Panel Admin Operativo", "Despacho de trabajos, pujas, validación de técnicos y cuotas")
 
-    tab_solicitudes, tab_puja, tab_tecnicos = st.tabs(["📋 Solicitudes", "💰 Pujas activas", "🧰 Técnicos"])
+    registros_pendientes = datos.obtener_solicitudes_registro("Pendiente")
+    etiqueta_registros = "📥 Registros"
+    if not registros_pendientes.empty:
+        etiqueta_registros = f"📥 Registros ({len(registros_pendientes)})"
+
+    tab_solicitudes, tab_puja, tab_tecnicos, tab_registros = st.tabs(
+        ["📋 Solicitudes", "💰 Pujas activas", "🧰 Técnicos", etiqueta_registros]
+    )
 
     with tab_solicitudes:
         _tab_solicitudes()
@@ -18,6 +25,9 @@ def pagina():
 
     with tab_tecnicos:
         _tab_tecnicos()
+
+    with tab_registros:
+        _tab_registros(registros_pendientes)
 
 
 def _tab_solicitudes():
@@ -190,3 +200,58 @@ def _tab_tecnicos():
                 st.rerun()
             else:
                 st.warning("Completa nombre, zona y teléfono")
+
+
+_ETIQUETAS_DOC = {
+    "ine_frente": "INE (frente)", "ine_reverso": "INE (reverso)",
+    "comprobante_domicilio": "Comprobante de domicilio",
+    "carta_recomendacion_1": "Carta de recomendación 1", "carta_recomendacion_2": "Carta de recomendación 2",
+    "foto_trabajo_1": "Foto de trabajo 1", "foto_trabajo_2": "Foto de trabajo 2", "foto_trabajo_3": "Foto de trabajo 3",
+    "carta_antecedentes": "Carta de antecedentes no penales", "foto_perfil": "Foto de perfil",
+}
+
+
+def _tab_registros(pendientes):
+    st.caption(
+        "Solicitudes de alta de nuevos técnicos y clientes, con sus documentos. "
+        "Revísalas a mano (referencias, antecedentes, trabajos previos) antes de aprobar — "
+        "al aprobar se genera un código de acceso de un solo uso y se le envía por correo "
+        "a la persona para que cree su usuario y contraseña."
+    )
+
+    if pendientes.empty:
+        st.info("No hay solicitudes de registro pendientes.")
+        return
+
+    for _, fila in pendientes.sort_values("creado", ascending=False).iterrows():
+        etiqueta_tipo = "🧰 Técnico" if fila.tipo == "TECNICO" else "🏠 Cliente"
+        with st.container(border=True):
+            st.markdown(f"**{etiqueta_tipo} · {fila.nombre}** &nbsp;&nbsp;`{fila.registro_id}`", unsafe_allow_html=True)
+            st.caption(f"Correo: {fila.correo} · Teléfono: {fila.telefono}" + (f" · Dirección: {fila.direccion}" if fila.direccion else ""))
+            if fila.tipo == "TECNICO":
+                st.caption(
+                    f"Especialidad: {fila.especialidad} · Experiencia: {fila.experiencia} · "
+                    f"Herramienta: {fila.herramienta} · Edad: {fila.edad}"
+                )
+
+            documentos = fila.documentos if isinstance(fila.documentos, dict) else {}
+            if documentos:
+                st.markdown("**Documentos:**")
+                for campo, url in documentos.items():
+                    etiqueta = _ETIQUETAS_DOC.get(campo, campo)
+                    st.markdown(f"- [{etiqueta}]({url})")
+
+            c1, c2 = st.columns(2)
+            if c1.button("✅ Aprobar", key=f"aprobar_reg_{fila.registro_id}", use_container_width=True):
+                resultado = datos.aprobar_solicitud_registro(fila.registro_id)
+                if resultado.get("ok"):
+                    st.success(
+                        f"Aprobado. Código de acceso: **{resultado.get('codigo')}** "
+                        f"(enviado a {resultado.get('correo', fila.correo)})."
+                    )
+                    st.rerun()
+                else:
+                    st.error(resultado.get("error", "No se pudo aprobar"))
+            if c2.button("❌ Rechazar", key=f"rechazar_reg_{fila.registro_id}", use_container_width=True):
+                datos.rechazar_solicitud_registro(fila.registro_id)
+                st.rerun()

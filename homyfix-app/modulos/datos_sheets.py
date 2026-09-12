@@ -58,7 +58,7 @@ def obtener_tecnicos() -> pd.DataFrame:
     datos = resp.get("datos", [])
     columnas = ["tecnico_id", "nombre", "especialidad", "zona", "telefono",
                 "estatus", "membresia_al_corriente", "calificacion_prom",
-                "num_calificaciones", "rechazos"]
+                "num_calificaciones", "rechazos", "foto_perfil_url"]
     if not datos:
         return pd.DataFrame(columns=columnas)
     df = pd.DataFrame(datos)
@@ -67,6 +67,7 @@ def obtener_tecnicos() -> pd.DataFrame:
         "Zona": "zona", "Telefono": "telefono", "Estatus": "estatus",
         "MembresiaAlCorriente": "membresia_al_corriente", "CalificacionProm": "calificacion_prom",
         "NumCalificaciones": "num_calificaciones", "Rechazos": "rechazos",
+        "FotoPerfilURL": "foto_perfil_url",
     })
     if "membresia_al_corriente" in df.columns:
         df["membresia_al_corriente"] = df["membresia_al_corriente"].apply(_es_verdadero)
@@ -189,3 +190,62 @@ def cerrar_puja(solicitud_id):
 
 def calificar_solicitud(solicitud_id, calificacion):
     _post("calificar_solicitud", solicitud_id=solicitud_id, calificacion=calificacion)
+
+
+# ---------- Registro / alta con documentos (técnico y cliente) ----------
+
+def enviar_solicitud_registro(tipo, nombre, correo, telefono, direccion=None, edad=None,
+                               especialidad=None, experiencia=None, herramienta=None,
+                               documentos=None):
+    """documentos: dict {nombre_campo: archivo_streamlit (o None)}"""
+    params = {
+        "tipo": tipo, "nombre": nombre, "correo": correo, "telefono": telefono,
+        "direccion": direccion or "", "edad": edad or "", "especialidad": especialidad or "",
+        "experiencia": experiencia or "", "herramienta": herramienta or "",
+    }
+    for campo, archivo in (documentos or {}).items():
+        if archivo is not None:
+            params[f"doc_{campo}_nombre"] = archivo.name
+            params[f"doc_{campo}_mime"] = archivo.type
+            params[f"doc_{campo}_b64"] = base64.b64encode(archivo.getvalue()).decode("ascii")
+    resp = _post("enviar_solicitud_registro", **params)
+    return resp.get("registro_id")
+
+
+def obtener_solicitudes_registro(estatus="Pendiente") -> pd.DataFrame:
+    resp = _post("obtener_solicitudes_registro", estatus=estatus or "")
+    datos = resp.get("datos", [])
+    columnas = ["registro_id", "tipo", "nombre", "correo", "telefono", "direccion", "edad",
+                "especialidad", "experiencia", "herramienta", "estatus", "vinculo_id",
+                "codigo_acceso", "codigo_usado", "creado"]
+    if not datos:
+        return pd.DataFrame(columns=columnas)
+    df = pd.DataFrame(datos).rename(columns={
+        "RegistroID": "registro_id", "Tipo": "tipo", "Nombre": "nombre", "Correo": "correo",
+        "Telefono": "telefono", "Direccion": "direccion", "Edad": "edad",
+        "Especialidad": "especialidad", "Experiencia": "experiencia", "Herramienta": "herramienta",
+        "Estatus": "estatus", "VinculoID": "vinculo_id", "CodigoAcceso": "codigo_acceso",
+        "CodigoUsado": "codigo_usado", "Creado": "creado",
+    })
+    # Las columnas de documentos vienen como DocUrl_<campo>; las juntamos en un dict por fila.
+    cols_doc = [c for c in df.columns if c.startswith("DocUrl_")]
+    if cols_doc and not df.empty:
+        df["documentos"] = [
+            {c.replace("DocUrl_", ""): fila[c] for c in cols_doc if fila[c]}
+            for _, fila in df.iterrows()
+        ]
+    else:
+        df["documentos"] = [{} for _ in range(len(df))]
+    return df
+
+
+def aprobar_solicitud_registro(registro_id):
+    return _post("aprobar_solicitud_registro", registro_id=registro_id)
+
+
+def rechazar_solicitud_registro(registro_id):
+    return _post("rechazar_solicitud_registro", registro_id=registro_id)
+
+
+def canjear_codigo(codigo, usuario, password):
+    return _post("canjear_codigo", codigo=codigo, usuario=usuario, password=password)

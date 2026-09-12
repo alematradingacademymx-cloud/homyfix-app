@@ -35,15 +35,28 @@ USUARIOS_DEMO = {
 }
 
 
+def _semilla_usuarios():
+    filas = []
+    for usuario, d in USUARIOS_DEMO.items():
+        filas.append({
+            "usuario": usuario, "password": d["password"], "rol": d["rol"], "nombre": d["nombre"],
+            "tecnico_id": d.get("tecnico_id"), "cliente_id": d.get("cliente_id"),
+        })
+    return pd.DataFrame(filas)
+
+
 def autenticar(usuario, password):
-    datos_usuario = USUARIOS_DEMO.get((usuario or "").strip().lower())
-    if not datos_usuario or datos_usuario["password"] != password:
+    df = st.session_state.usuarios_df
+    usuario_norm = (usuario or "").strip().lower()
+    fila = df[df.usuario.astype(str).str.strip().str.lower() == usuario_norm]
+    if fila.empty or str(fila.iloc[0].password) != str(password):
         return None
+    f = fila.iloc[0]
     return {
-        "rol": datos_usuario["rol"],
-        "nombre": datos_usuario["nombre"],
-        "tecnico_id": datos_usuario.get("tecnico_id"),
-        "cliente_id": datos_usuario.get("cliente_id"),
+        "rol": f.rol,
+        "nombre": f.nombre,
+        "tecnico_id": f.tecnico_id or None,
+        "cliente_id": f.cliente_id or None,
     }
 
 
@@ -51,13 +64,16 @@ def _semilla_tecnicos():
     return pd.DataFrame([
         {"tecnico_id": "T-001", "nombre": "Carlos Pérez", "especialidad": "Plomería",
          "zona": "Narvarte", "telefono": "5511111111", "estatus": "Activo",
-         "membresia_al_corriente": True, "calificacion_prom": 4.8, "num_calificaciones": 10, "rechazos": 0},
+         "membresia_al_corriente": True, "calificacion_prom": 4.8, "num_calificaciones": 10, "rechazos": 0,
+         "foto_perfil_url": None},
         {"tecnico_id": "T-002", "nombre": "Roberto (Don Beto)", "especialidad": "Plomería",
          "zona": "Centro", "telefono": "5522222222", "estatus": "Activo",
-         "membresia_al_corriente": True, "calificacion_prom": 4.9, "num_calificaciones": 22, "rechazos": 1},
+         "membresia_al_corriente": True, "calificacion_prom": 4.9, "num_calificaciones": 22, "rechazos": 1,
+         "foto_perfil_url": None},
         {"tecnico_id": "T-003", "nombre": "Ana López", "especialidad": "Electricidad",
          "zona": "Del Valle", "telefono": "5533333333", "estatus": "Pendiente de validación",
-         "membresia_al_corriente": False, "calificacion_prom": None, "num_calificaciones": 0, "rechazos": 0},
+         "membresia_al_corriente": False, "calificacion_prom": None, "num_calificaciones": 0, "rechazos": 0,
+         "foto_perfil_url": None},
     ])
 
 
@@ -85,17 +101,37 @@ def _semilla_pujas():
     return pd.DataFrame(columns=["solicitud_id", "tecnico_id", "costo", "fecha"])
 
 
+COLUMNAS_REGISTROS = [
+    "registro_id", "tipo", "nombre", "correo", "telefono", "direccion", "edad",
+    "especialidad", "experiencia", "herramienta", "documentos", "estatus",
+    "vinculo_id", "codigo_acceso", "codigo_usado", "creado",
+]
+
+
+def _semilla_registros():
+    return pd.DataFrame(columns=COLUMNAS_REGISTROS)
+
+
 def inicializar_datos():
+    if "usuarios_df" not in st.session_state:
+        st.session_state.usuarios_df = _semilla_usuarios()
     if "tecnicos_df" not in st.session_state:
         st.session_state.tecnicos_df = _semilla_tecnicos()
     if "solicitudes_df" not in st.session_state:
         st.session_state.solicitudes_df = _semilla_solicitudes()
     if "pujas_df" not in st.session_state:
         st.session_state.pujas_df = _semilla_pujas()
+    if "registros_df" not in st.session_state:
+        st.session_state.registros_df = _semilla_registros()
 
 
 def _generar_codigo():
     return f"{random.randint(0, 999999):06d}"
+
+
+def _generar_codigo_acceso():
+    alfabeto = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # sin 0/O/1/I para evitar confusiones
+    return "".join(random.choice(alfabeto) for _ in range(8))
 
 
 # ---------- Técnicos ----------
@@ -110,7 +146,7 @@ def agregar_tecnico(nombre, especialidad, zona, telefono):
     fila = {"tecnico_id": nuevo_id, "nombre": nombre, "especialidad": especialidad,
             "zona": zona, "telefono": telefono, "estatus": "Pendiente de validación",
             "membresia_al_corriente": False, "calificacion_prom": None,
-            "num_calificaciones": 0, "rechazos": 0}
+            "num_calificaciones": 0, "rechazos": 0, "foto_perfil_url": None}
     st.session_state.tecnicos_df = pd.concat([df, pd.DataFrame([fila])], ignore_index=True)
     return nuevo_id
 
@@ -267,3 +303,101 @@ def calificar_solicitud(solicitud_id, calificacion):
         _registrar_calificacion_tecnico(fila.tecnico_id, calificacion)
     df.loc[df.solicitud_id == solicitud_id, "calificacion"] = calificacion
     df.loc[df.solicitud_id == solicitud_id, "estatus"] = "Calificado"
+
+
+# ---------- Registro / alta con documentos (técnico y cliente) ----------
+
+def _subir_documento_demo(nombre_archivo, bytes_datos, mime_type):
+    # En modo demo no hay Drive real: solo simulamos la URL del documento.
+    return f"demo://documento/{nombre_archivo}"
+
+
+def enviar_solicitud_registro(tipo, nombre, correo, telefono, direccion=None, edad=None,
+                               especialidad=None, experiencia=None, herramienta=None,
+                               documentos=None):
+    """documentos: dict {nombre_campo: archivo_streamlit (o None)}"""
+    df = st.session_state.registros_df
+    nuevo_id = f"R-{len(df) + 1:04d}"
+    urls_documentos = {}
+    for campo, archivo in (documentos or {}).items():
+        if archivo is not None:
+            urls_documentos[campo] = _subir_documento_demo(archivo.name, archivo.getvalue(), archivo.type)
+    fila = {
+        "registro_id": nuevo_id, "tipo": tipo, "nombre": nombre, "correo": correo,
+        "telefono": telefono, "direccion": direccion, "edad": edad,
+        "especialidad": especialidad, "experiencia": experiencia, "herramienta": herramienta,
+        "documentos": urls_documentos, "estatus": "Pendiente",
+        "vinculo_id": None, "codigo_acceso": None, "codigo_usado": False,
+        "creado": datetime.now(),
+    }
+    st.session_state.registros_df = pd.concat([df, pd.DataFrame([fila])], ignore_index=True)
+    return nuevo_id
+
+
+def obtener_solicitudes_registro(estatus="Pendiente") -> pd.DataFrame:
+    df = st.session_state.registros_df
+    if estatus:
+        return df[df.estatus == estatus]
+    return df
+
+
+def aprobar_solicitud_registro(registro_id):
+    df = st.session_state.registros_df
+    idx = df.index[df.registro_id == registro_id]
+    if len(idx) == 0:
+        return {"ok": False, "error": "solicitud no encontrada"}
+    i = idx[0]
+    fila = df.loc[i]
+    codigo = _generar_codigo_acceso()
+
+    if fila.tipo == "TECNICO":
+        tecnicos = st.session_state.tecnicos_df
+        nuevo_tecnico_id = f"T-{len(tecnicos) + 1:03d}"
+        foto_perfil_url = (fila.documentos or {}).get("foto_perfil")
+        nueva_fila = {
+            "tecnico_id": nuevo_tecnico_id, "nombre": fila.nombre, "especialidad": fila.especialidad,
+            "zona": fila.direccion, "telefono": fila.telefono, "estatus": "Activo",
+            "membresia_al_corriente": False, "calificacion_prom": None,
+            "num_calificaciones": 0, "rechazos": 0, "foto_perfil_url": foto_perfil_url,
+        }
+        st.session_state.tecnicos_df = pd.concat([tecnicos, pd.DataFrame([nueva_fila])], ignore_index=True)
+        vinculo_id = nuevo_tecnico_id
+    else:
+        vinculo_id = f"C-{len(df) + 1:04d}"
+
+    df.at[i, "estatus"] = "Aprobado"
+    df.at[i, "vinculo_id"] = vinculo_id
+    df.at[i, "codigo_acceso"] = codigo
+    df.at[i, "codigo_usado"] = False
+    # En modo demo no hay correo real: regresamos el código para mostrarlo en pantalla.
+    return {"ok": True, "codigo": codigo, "correo": fila.correo, "vinculo_id": vinculo_id}
+
+
+def rechazar_solicitud_registro(registro_id):
+    df = st.session_state.registros_df
+    idx = df.index[df.registro_id == registro_id]
+    if len(idx) == 0:
+        return {"ok": False, "error": "solicitud no encontrada"}
+    df.at[idx[0], "estatus"] = "Rechazado"
+    return {"ok": True}
+
+
+def canjear_codigo(codigo, usuario, password):
+    df = st.session_state.registros_df
+    codigo = (codigo or "").strip().upper()
+    fila = df[(df.codigo_acceso == codigo) & (df.estatus == "Aprobado") & (df.codigo_usado == False)]
+    if fila.empty:
+        return {"ok": False, "error": "Código inválido, ya usado, o la solicitud todavía no ha sido aprobada."}
+    f = fila.iloc[0]
+    usuarios = st.session_state.usuarios_df
+    usuario_norm = (usuario or "").strip()
+    if (usuarios.usuario.astype(str).str.strip().str.lower() == usuario_norm.lower()).any():
+        return {"ok": False, "error": "Ese nombre de usuario ya existe, elige otro."}
+    nueva_fila = {
+        "usuario": usuario_norm, "password": password, "rol": f.tipo, "nombre": f.nombre,
+        "tecnico_id": f.vinculo_id if f.tipo == "TECNICO" else None,
+        "cliente_id": f.vinculo_id if f.tipo == "CLIENTE" else None,
+    }
+    st.session_state.usuarios_df = pd.concat([usuarios, pd.DataFrame([nueva_fila])], ignore_index=True)
+    df.loc[df.registro_id == f.registro_id, "codigo_usado"] = True
+    return {"ok": True, "rol": f.tipo}

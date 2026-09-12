@@ -5,22 +5,12 @@
  * "Cualquier usuario") y todas las peticiones llegan por doPost con un
  * "token" secreto que tú inventas, para que nadie más pueda escribir en tu
  * Sheet aunque conozca la URL.
- *
- * PASOS:
- * 1. Crea un Google Sheet llamado "HOMYFIX_BD" con 3 pestañas: Usuarios,
- *    Tecnicos, Solicitudes (los encabezados se crean solos la primera vez
- *    que se use cada una, ver crearPestanaSiNoExiste).
- * 2. Extensiones > Apps Script, borra el contenido de Code.gs y pega esto.
- * 3. Cambia TOKEN_SECRETO por uno que inventes tú (letras y números).
- * 4. Implementar > Nueva implementación > Tipo: Aplicación web.
- *    Ejecutar como: Yo. Quién tiene acceso: Cualquier usuario.
- * 5. Copia la URL que te da (termina en /exec) — esa es API_URL para
- *    Streamlit.
  */
 
 const TOKEN_SECRETO = "hmyfx-2026-9f3kd8s7q2";
 const SHEET_ID = "1ECWIYcCqs3FgID6CKOyXXOaKGi6AaB-s6K3q9XOSrD0"; // HOMYFIX_BD
 const CARPETA_FOTOS = "Homyfix_Diagnosticos";
+const CARPETA_REGISTROS = "Homyfix_Registros";
 
 function doPost(e) {
   try {
@@ -48,6 +38,11 @@ function doPost(e) {
       case "ofertar_puja": return respuesta(ofertarPuja(p));
       case "cerrar_puja": return respuesta(cerrarPuja(p));
       case "calificar_solicitud": return respuesta(calificarSolicitud(p));
+      case "enviar_solicitud_registro": return respuesta(enviarSolicitudRegistro(p));
+      case "obtener_solicitudes_registro": return respuesta({ok: true, datos: obtenerSolicitudesRegistro(p)});
+      case "aprobar_solicitud_registro": return respuesta(aprobarSolicitudRegistro(p));
+      case "rechazar_solicitud_registro": return respuesta(rechazarSolicitudRegistro(p));
+      case "canjear_codigo": return respuesta(canjearCodigo(p));
       default: return respuesta({ok: false, error: "acción no reconocida"});
     }
   } catch (err) {
@@ -64,12 +59,23 @@ function getSheet() {
   return SpreadsheetApp.openById(SHEET_ID);
 }
 
+function asegurarColumnas(hoja, columnasEsperadas) {
+  const ultimaCol = hoja.getLastColumn() || 1;
+  const encabezados = hoja.getRange(1, 1, 1, ultimaCol).getValues()[0];
+  const faltantes = columnasEsperadas.filter(c => encabezados.indexOf(c) === -1);
+  if (faltantes.length > 0) {
+    hoja.getRange(1, encabezados.length + 1, 1, faltantes.length).setValues([faltantes]);
+  }
+}
+
 function crearPestanaSiNoExiste(nombre, encabezados) {
   const libro = getSheet();
   let hoja = libro.getSheetByName(nombre);
   if (!hoja) {
     hoja = libro.insertSheet(nombre);
     hoja.appendRow(encabezados);
+  } else {
+    asegurarColumnas(hoja, encabezados);
   }
   return hoja;
 }
@@ -90,7 +96,7 @@ function encontrarFila(hoja, columnaId, valorId) {
   const encabezados = valores[0];
   const idx = encabezados.indexOf(columnaId);
   for (let i = 1; i < valores.length; i++) {
-    if (String(valores[i][idx]) === String(valorId)) return i + 1; // 1-indexed para getRange
+    if (String(valores[i][idx]) === String(valorId)) return i + 1;
   }
   return -1;
 }
@@ -113,8 +119,15 @@ function generarCodigoSeguridad() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-// ---------- Usuarios / Login ----------
-// Pestaña Usuarios: Usuario | Password | Rol | Nombre | TecnicoID | ClienteID
+function generarCodigoAcceso() {
+  const alfabeto = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sin 0/O/1/I
+  let codigo = "";
+  for (let i = 0; i < 8; i++) {
+    codigo += alfabeto.charAt(Math.floor(Math.random() * alfabeto.length));
+  }
+  return codigo;
+}
+
 function login(p) {
   const hoja = crearPestanaSiNoExiste("Usuarios", ["Usuario", "Password", "Rol", "Nombre", "TecnicoID", "ClienteID"]);
   const filas = filasComoObjetos(hoja);
@@ -132,9 +145,7 @@ function login(p) {
   };
 }
 
-// ---------- Técnicos ----------
-// Pestaña Tecnicos: TecnicoID | Nombre | Especialidad | Zona | Telefono | Estatus | MembresiaAlCorriente | CalificacionProm | NumCalificaciones | Rechazos
-const COLS_TECNICOS = ["TecnicoID", "Nombre", "Especialidad", "Zona", "Telefono", "Estatus", "MembresiaAlCorriente", "CalificacionProm", "NumCalificaciones", "Rechazos"];
+const COLS_TECNICOS = ["TecnicoID", "Nombre", "Especialidad", "Zona", "Telefono", "Estatus", "MembresiaAlCorriente", "CalificacionProm", "NumCalificaciones", "Rechazos", "FotoPerfilURL"];
 
 function obtenerTecnicos() {
   const hoja = crearPestanaSiNoExiste("Tecnicos", COLS_TECNICOS);
@@ -144,7 +155,7 @@ function obtenerTecnicos() {
 function agregarTecnico(p) {
   const hoja = crearPestanaSiNoExiste("Tecnicos", COLS_TECNICOS);
   const nuevoId = "T-" + Utilities.getUuid().slice(0, 8);
-  hoja.appendRow([nuevoId, p.nombre, p.especialidad, p.zona, p.telefono, "Pendiente de validación", false, "", 0, 0]);
+  hoja.appendRow([nuevoId, p.nombre, p.especialidad, p.zona, p.telefono, "Pendiente de validación", false, "", 0, 0, ""]);
   return {ok: true, tecnico_id: nuevoId};
 }
 
@@ -180,8 +191,6 @@ function registrarCalificacionTecnico(tecnicoId, valor, esRechazo) {
   }
 }
 
-// ---------- Solicitudes ----------
-// Pestaña Solicitudes: SolicitudID | ClienteID | ClienteNombre | Categoria | Zona | Descripcion | Urgencia | Estatus | TecnicoID | Costo | Calificacion | Creado | CodigoSeguridad | TipoCotizacion | CostoVisita | CostoReparacion | Diagnostico | FotoURL | TecnicosRechazados
 const COLS_SOLICITUDES = ["SolicitudID", "ClienteID", "ClienteNombre", "Categoria", "Zona", "Descripcion", "Urgencia", "Estatus", "TecnicoID", "Costo", "Calificacion", "Creado", "CodigoSeguridad", "TipoCotizacion", "CostoVisita", "CostoReparacion", "Diagnostico", "FotoURL", "TecnicosRechazados"];
 
 function obtenerSolicitudes() {
@@ -242,14 +251,19 @@ function solicitarVisita(p) {
   return {ok: true};
 }
 
-function subirFotoDiagnostico(p) {
-  const carpetas = DriveApp.getFoldersByName(CARPETA_FOTOS);
-  const carpeta = carpetas.hasNext() ? carpetas.next() : DriveApp.createFolder(CARPETA_FOTOS);
-  const bytes = Utilities.base64Decode(p.contenido_base64);
-  const blob = Utilities.newBlob(bytes, p.mime_type || "image/jpeg", p.nombre_archivo || "foto.jpg");
+function guardarArchivoEnCarpeta(nombreCarpeta, base64, mimeType, nombreArchivo) {
+  const carpetas = DriveApp.getFoldersByName(nombreCarpeta);
+  const carpeta = carpetas.hasNext() ? carpetas.next() : DriveApp.createFolder(nombreCarpeta);
+  const bytes = Utilities.base64Decode(base64);
+  const blob = Utilities.newBlob(bytes, mimeType || "image/jpeg", nombreArchivo || "archivo");
   const archivo = carpeta.createFile(blob);
   archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  return {ok: true, foto_url: archivo.getUrl()};
+  return archivo.getUrl();
+}
+
+function subirFotoDiagnostico(p) {
+  const url = guardarArchivoEnCarpeta(CARPETA_FOTOS, p.contenido_base64, p.mime_type, p.nombre_archivo);
+  return {ok: true, foto_url: url};
 }
 
 function subirBitacora(p) {
@@ -289,7 +303,6 @@ function rechazarSolicitud(p) {
   return {ok: true};
 }
 
-// ---------- Pujas ----------
 const COLS_PUJAS = ["SolicitudID", "TecnicoID", "Costo", "Fecha"];
 
 function obtenerPujas(p) {
@@ -361,4 +374,150 @@ function calificarSolicitud(p) {
   actualizarCelda(hoja, fila, "Calificacion", p.calificacion);
   actualizarCelda(hoja, fila, "Estatus", "Calificado");
   return {ok: true};
+}
+
+// ---------- Registro / alta con documentos (técnico y cliente) ----------
+
+const CAMPOS_DOC_REGISTRO = [
+  "ine_frente", "ine_reverso", "comprobante_domicilio",
+  "carta_recomendacion_1", "carta_recomendacion_2",
+  "foto_trabajo_1", "foto_trabajo_2", "foto_trabajo_3",
+  "carta_antecedentes", "foto_perfil",
+];
+
+function colsRegistros() {
+  const base = ["RegistroID", "Tipo", "Nombre", "Correo", "Telefono", "Direccion", "Edad",
+    "Especialidad", "Experiencia", "Herramienta", "Estatus", "VinculoID",
+    "CodigoAcceso", "CodigoUsado", "Creado"];
+  const docs = CAMPOS_DOC_REGISTRO.map(c => "DocUrl_" + c);
+  return base.concat(docs);
+}
+
+function enviarSolicitudRegistro(p) {
+  const cols = colsRegistros();
+  const hoja = crearPestanaSiNoExiste("SolicitudesRegistro", cols);
+  const nuevoId = "R-" + Utilities.getUuid().slice(0, 8);
+
+  const urlsDocumentos = {};
+  CAMPOS_DOC_REGISTRO.forEach(campo => {
+    const b64 = p["doc_" + campo + "_b64"];
+    if (b64) {
+      const nombreArchivo = p["doc_" + campo + "_nombre"] || campo;
+      const mime = p["doc_" + campo + "_mime"] || "image/jpeg";
+      urlsDocumentos[campo] = guardarArchivoEnCarpeta(CARPETA_REGISTROS, b64, mime, nombreArchivo);
+    }
+  });
+
+  const fila = {
+    RegistroID: nuevoId, Tipo: p.tipo, Nombre: p.nombre, Correo: p.correo, Telefono: p.telefono,
+    Direccion: p.direccion || "", Edad: p.edad || "", Especialidad: p.especialidad || "",
+    Experiencia: p.experiencia || "", Herramienta: p.herramienta || "",
+    Estatus: "Pendiente", VinculoID: "", CodigoAcceso: "", CodigoUsado: false, Creado: new Date(),
+  };
+  CAMPOS_DOC_REGISTRO.forEach(campo => {
+    fila["DocUrl_" + campo] = urlsDocumentos[campo] || "";
+  });
+
+  hoja.appendRow(cols.map(c => fila[c] !== undefined ? fila[c] : ""));
+  return {ok: true, registro_id: nuevoId};
+}
+
+function obtenerSolicitudesRegistro(p) {
+  const hoja = crearPestanaSiNoExiste("SolicitudesRegistro", colsRegistros());
+  const filas = filasComoObjetos(hoja);
+  if (p.estatus) {
+    return filas.filter(f => String(f.Estatus) === String(p.estatus));
+  }
+  return filas;
+}
+
+function aprobarSolicitudRegistro(p) {
+  const hoja = crearPestanaSiNoExiste("SolicitudesRegistro", colsRegistros());
+  const fila = encontrarFila(hoja, "RegistroID", p.registro_id);
+  if (fila === -1) return {ok: false, error: "solicitud no encontrada"};
+
+  const tipo = leerCelda(hoja, fila, "Tipo");
+  const nombre = leerCelda(hoja, fila, "Nombre");
+  const correo = leerCelda(hoja, fila, "Correo");
+  const codigo = generarCodigoAcceso();
+  let vinculoId;
+
+  if (tipo === "TECNICO") {
+    const direccion = leerCelda(hoja, fila, "Direccion");
+    const especialidad = leerCelda(hoja, fila, "Especialidad");
+    const telefono = leerCelda(hoja, fila, "Telefono");
+    const fotoPerfilUrl = leerCelda(hoja, fila, "DocUrl_foto_perfil") || "";
+    const hojaTecnicos = crearPestanaSiNoExiste("Tecnicos", COLS_TECNICOS);
+    const nuevoTecnicoId = "T-" + Utilities.getUuid().slice(0, 8);
+    hojaTecnicos.appendRow([nuevoTecnicoId, nombre, especialidad, direccion, telefono, "Activo", false, "", 0, 0, fotoPerfilUrl]);
+    vinculoId = nuevoTecnicoId;
+  } else {
+    vinculoId = "C-" + Utilities.getUuid().slice(0, 8);
+  }
+
+  actualizarCelda(hoja, fila, "Estatus", "Aprobado");
+  actualizarCelda(hoja, fila, "VinculoID", vinculoId);
+  actualizarCelda(hoja, fila, "CodigoAcceso", codigo);
+  actualizarCelda(hoja, fila, "CodigoUsado", false);
+
+  try {
+    const asunto = "Homyfix — tu solicitud fue aprobada";
+    const cuerpo =
+      "Hola " + nombre + ",\n\n" +
+      "¡Tu solicitud para unirte a Homyfix fue aprobada!\n\n" +
+      "Tu código de acceso es: " + codigo + "\n\n" +
+      "Para crear tu cuenta:\n" +
+      "1. Entra a la app de Homyfix.\n" +
+      "2. En la pantalla de inicio, da clic en \"Ya tengo un código de acceso\".\n" +
+      "3. Ingresa este código junto con el usuario y la contraseña que quieras usar.\n\n" +
+      "Este código es de un solo uso. Si tú no solicitaste esto, ignora este correo.\n\n" +
+      "— Equipo Homyfix";
+    MailApp.sendEmail(correo, asunto, cuerpo);
+  } catch (err) {
+    // Si el envío de correo falla, la aprobación ya quedó registrada; el código
+    // se puede compartir manualmente desde el panel admin si hace falta.
+  }
+
+  return {ok: true, codigo: codigo, correo: correo, vinculo_id: vinculoId};
+}
+
+function rechazarSolicitudRegistro(p) {
+  const hoja = crearPestanaSiNoExiste("SolicitudesRegistro", colsRegistros());
+  const fila = encontrarFila(hoja, "RegistroID", p.registro_id);
+  if (fila === -1) return {ok: false, error: "solicitud no encontrada"};
+  actualizarCelda(hoja, fila, "Estatus", "Rechazado");
+  return {ok: true};
+}
+
+function canjearCodigo(p) {
+  const hoja = crearPestanaSiNoExiste("SolicitudesRegistro", colsRegistros());
+  const filas = filasComoObjetos(hoja);
+  const codigo = String(p.codigo || "").trim().toUpperCase();
+  const encontrado = filas.find(f =>
+    String(f.CodigoAcceso).trim().toUpperCase() === codigo &&
+    String(f.Estatus) === "Aprobado" &&
+    !f.CodigoUsado
+  );
+  if (!encontrado) {
+    return {ok: false, error: "Código inválido, ya usado, o la solicitud todavía no ha sido aprobada."};
+  }
+
+  const hojaUsuarios = crearPestanaSiNoExiste("Usuarios", ["Usuario", "Password", "Rol", "Nombre", "TecnicoID", "ClienteID"]);
+  const usuarios = filasComoObjetos(hojaUsuarios);
+  const usuarioNuevo = String(p.usuario || "").trim();
+  const yaExiste = usuarios.some(u => String(u.Usuario).trim().toLowerCase() === usuarioNuevo.toLowerCase());
+  if (yaExiste) {
+    return {ok: false, error: "Ese nombre de usuario ya existe, elige otro."};
+  }
+
+  const tecnicoId = encontrado.Tipo === "TECNICO" ? encontrado.VinculoID : "";
+  const clienteId = encontrado.Tipo === "CLIENTE" ? encontrado.VinculoID : "";
+  hojaUsuarios.appendRow([usuarioNuevo, p.password, encontrado.Tipo, encontrado.Nombre, tecnicoId, clienteId]);
+
+  const filaRegistro = encontrarFila(hoja, "RegistroID", encontrado.RegistroID);
+  if (filaRegistro !== -1) {
+    actualizarCelda(hoja, filaRegistro, "CodigoUsado", true);
+  }
+
+  return {ok: true, rol: encontrado.Tipo};
 }
