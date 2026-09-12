@@ -50,6 +50,10 @@ def actualizar_estatus_tecnico(tecnico_id, nuevo_estatus):
     return _backend().actualizar_estatus_tecnico(tecnico_id, nuevo_estatus)
 
 
+def actualizar_membresia_tecnico(tecnico_id, al_corriente):
+    return _backend().actualizar_membresia_tecnico(tecnico_id, al_corriente)
+
+
 def obtener_solicitudes():
     return _backend().obtener_solicitudes()
 

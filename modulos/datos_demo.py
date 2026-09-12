@@ -101,6 +101,11 @@ def actualizar_estatus_tecnico(tecnico_id, nuevo_estatus):
     df.loc[df.tecnico_id == tecnico_id, "estatus"] = nuevo_estatus
 
 
+def actualizar_membresia_tecnico(tecnico_id, al_corriente: bool):
+    df = st.session_state.tecnicos_df
+    df.loc[df.tecnico_id == tecnico_id, "membresia_al_corriente"] = al_corriente
+
+
 # ---------- Solicitudes ----------
 
 def obtener_solicitudes() -> pd.DataFrame:

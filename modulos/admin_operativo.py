@@ -89,6 +89,17 @@ def _tab_tecnicos():
         use_container_width=True, hide_index=True,
     )
 
+    if not df.empty:
+        st.subheader("Membresía")
+        for _, fila in df.iterrows():
+            c1, c2 = st.columns([3, 1])
+            al_corriente = bool(fila.membresia_al_corriente)
+            c1.write(f"**{fila.nombre}** ({fila.tecnico_id}) · {'✅ Al corriente' if al_corriente else '⛔ Vencida / pendiente'}")
+            etiqueta = "Marcar vencida" if al_corriente else "Marcar al corriente"
+            if c2.button(etiqueta, key=f"membresia_{fila.tecnico_id}", use_container_width=True):
+                datos.actualizar_membresia_tecnico(fila.tecnico_id, not al_corriente)
+                st.rerun()
+
     pendientes = df[df.estatus == "Pendiente de validación"]
     if not pendientes.empty:
         st.subheader("Pendientes de validar")

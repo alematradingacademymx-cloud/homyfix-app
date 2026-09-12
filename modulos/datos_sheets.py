@@ -55,11 +55,20 @@ def obtener_tecnicos() -> pd.DataFrame:
             "estatus", "membresia_al_corriente", "calificacion_prom",
         ])
     df = pd.DataFrame(datos)
-    return df.rename(columns={
+    df = df.rename(columns={
         "TecnicoID": "tecnico_id", "Nombre": "nombre", "Especialidad": "especialidad",
         "Zona": "zona", "Telefono": "telefono", "Estatus": "estatus",
         "MembresiaAlCorriente": "membresia_al_corriente", "CalificacionProm": "calificacion_prom",
     })
+    if "membresia_al_corriente" in df.columns:
+        df["membresia_al_corriente"] = df["membresia_al_corriente"].apply(_es_verdadero)
+    return df
+
+
+def _es_verdadero(valor) -> bool:
+    if isinstance(valor, bool):
+        return valor
+    return str(valor).strip().lower() in ("si", "sí", "true", "1", "yes", "verdadero")
 
 
 def agregar_tecnico(nombre, especialidad, zona, telefono):
@@ -69,6 +78,10 @@ def agregar_tecnico(nombre, especialidad, zona, telefono):
 
 def actualizar_estatus_tecnico(tecnico_id, nuevo_estatus):
     _post("actualizar_estatus_tecnico", tecnico_id=tecnico_id, nuevo_estatus=nuevo_estatus)
+
+
+def actualizar_membresia_tecnico(tecnico_id, al_corriente: bool):
+    _post("actualizar_membresia_tecnico", tecnico_id=tecnico_id, al_corriente="SI" if al_corriente else "")
 
 
 # ---------- Solicitudes ----------

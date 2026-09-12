@@ -32,6 +32,7 @@ function doPost(e) {
       case "obtener_tecnicos": return respuesta({ok: true, datos: obtenerTecnicos()});
       case "agregar_tecnico": return respuesta(agregarTecnico(p));
       case "actualizar_estatus_tecnico": return respuesta(actualizarEstatusTecnico(p));
+      case "actualizar_membresia_tecnico": return respuesta(actualizarMembresiaTecnico(p));
       case "obtener_solicitudes": return respuesta({ok: true, datos: obtenerSolicitudes()});
       case "crear_solicitud": return respuesta(crearSolicitud(p));
       case "asignar_tecnico": return respuesta(asignarTecnico(p));
@@ -131,6 +132,14 @@ function actualizarEstatusTecnico(p) {
   const fila = encontrarFila(hoja, "TecnicoID", p.tecnico_id);
   if (fila === -1) return {ok: false, error: "técnico no encontrado"};
   actualizarCelda(hoja, fila, "Estatus", p.nuevo_estatus);
+  return {ok: true};
+}
+
+function actualizarMembresiaTecnico(p) {
+  const hoja = crearPestanaSiNoExiste("Tecnicos", COLS_TECNICOS);
+  const fila = encontrarFila(hoja, "TecnicoID", p.tecnico_id);
+  if (fila === -1) return {ok: false, error: "técnico no encontrado"};
+  actualizarCelda(hoja, fila, "MembresiaAlCorriente", p.al_corriente ? "SI" : "");
   return {ok: true};
 }
 
