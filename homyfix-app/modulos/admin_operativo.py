@@ -6,12 +6,15 @@ MEMBRESIA_MXN = 150
 
 
 def pagina():
-    encabezado("Panel Admin Operativo", "Despacho de trabajos, validación de técnicos y cuotas")
+    encabezado("Panel Admin Operativo", "Despacho de trabajos, pujas, validación de técnicos y cuotas")
 
-    tab_solicitudes, tab_tecnicos = st.tabs(["📋 Solicitudes", "🧰 Técnicos"])
+    tab_solicitudes, tab_puja, tab_tecnicos = st.tabs(["📋 Solicitudes", "💰 Pujas activas", "🧰 Técnicos"])
 
     with tab_solicitudes:
         _tab_solicitudes()
+
+    with tab_puja:
+        _tab_puja()
 
     with tab_tecnicos:
         _tab_tecnicos()
@@ -23,8 +26,8 @@ def _tab_solicitudes():
         st.info("Todavía no hay solicitudes registradas.")
         return
 
-    pendientes = df[df.estatus.isin(["Pendiente", "Asignado", "En curso"])]
-    st.caption(f"{len(pendientes)} solicitud(es) activa(s)")
+    activas = df[df.estatus.isin(["Pendiente", "Asignado", "En Visita", "Cotizado", "En Puja", "Aceptado", "En curso"])]
+    st.caption(f"{len(activas)} solicitud(es) activa(s)")
 
     for _, fila in df.sort_values("creado", ascending=False).iterrows():
         with st.container(border=True):
@@ -37,6 +40,12 @@ def _tab_solicitudes():
                 )
                 st.write(fila.descripcion)
                 st.caption(f"Cliente: {fila.cliente_nombre} · Urgencia: {fila.urgencia}")
+                if fila.estatus in ("Asignado", "En Visita", "Cotizado", "Aceptado", "En curso"):
+                    st.caption(f"🔐 Código de seguridad: **{fila.codigo_seguridad}**")
+                if fila.estatus == "Cotizado" and fila.costo_reparacion:
+                    st.caption(f"Cotización enviada: ${fila.costo_reparacion} ({fila.tipo_cotizacion})")
+                if fila.estatus == "En Puja":
+                    st.warning("En puja abierta a todos los técnicos — revisa la pestaña 'Pujas activas' para ver las ofertas y cerrarla.")
             with col2:
                 if fila.estatus == "Pendiente":
                     tecnicos_activos = datos.obtener_tecnicos()
@@ -47,20 +56,19 @@ def _tab_solicitudes():
                         label_visibility="collapsed", placeholder="Elegir técnico",
                         index=None,
                     )
-                    costo = st.number_input(
-                        "Costo (MXN)", min_value=0, step=50, key=f"costo_{fila.solicitud_id}"
-                    )
+                    st.caption("El técnico cotizará el trabajo desde su panel (directo o con visita).")
                     if st.button("Asignar", key=f"btn_{fila.solicitud_id}", use_container_width=True):
                         if seleccion:
                             tecnico_id = seleccion.split("(")[-1].rstrip(")")
-                            datos.asignar_tecnico(fila.solicitud_id, tecnico_id, costo or None)
+                            datos.asignar_tecnico(fila.solicitud_id, tecnico_id)
                             st.rerun()
                         else:
                             st.warning("Elige un técnico primero")
-                elif fila.estatus in ("Asignado", "En curso"):
-                    siguiente = "En curso" if fila.estatus == "Asignado" else "Completado"
-                    if st.button(f"Marcar {siguiente}", key=f"avanzar_{fila.solicitud_id}", use_container_width=True):
-                        datos.actualizar_estatus_solicitud(fila.solicitud_id, siguiente)
+                elif fila.estatus == "Aceptado":
+                    st.caption("Esperando que el técnico marque 'En curso'")
+                elif fila.estatus == "En curso":
+                    if st.button("Marcar completado", key=f"avanzar_{fila.solicitud_id}", use_container_width=True):
+                        datos.actualizar_estatus_solicitud(fila.solicitud_id, "Completado")
                         st.rerun()
 
     st.divider()
@@ -80,6 +88,59 @@ def _tab_solicitudes():
                 st.rerun()
             else:
                 st.warning("Completa nombre, zona y descripción")
+
+
+def _tab_puja():
+    st.caption(
+        "Aquí ves todas las ofertas de cada puja — esta información es solo para el equipo de despacho, "
+        "nunca se muestra a clientes ni técnicos."
+    )
+    solicitudes = datos.obtener_solicitudes()
+    en_puja = solicitudes[solicitudes.estatus == "En Puja"]
+
+    if en_puja.empty:
+        st.info("No hay solicitudes en puja en este momento.")
+        return
+
+    tecnicos = datos.obtener_tecnicos()
+
+    for _, fila in en_puja.sort_values("creado", ascending=False).iterrows():
+        with st.container(border=True):
+            st.markdown(f"**{fila.solicitud_id}** · {fila.categoria} · {fila.zona}", unsafe_allow_html=True)
+            st.write(fila.descripcion)
+            if fila.diagnostico:
+                st.caption(f"Diagnóstico (falla actualizada): {fila.diagnostico}")
+            if fila.foto_url:
+                st.caption(f"[Ver foto de la falla]({fila.foto_url})")
+
+            pujas = datos.obtener_pujas(fila.solicitud_id)
+            if pujas.empty:
+                st.info("Todavía no hay ofertas de ningún técnico.")
+                continue
+
+            comparativo = pujas.merge(
+                tecnicos[["tecnico_id", "nombre", "calificacion_prom"]], on="tecnico_id", how="left"
+            )
+            comparativo = comparativo.sort_values(
+                ["calificacion_prom", "costo"], ascending=[False, True]
+            )
+            st.dataframe(
+                comparativo[["tecnico_id", "nombre", "calificacion_prom", "costo"]].rename(
+                    columns={
+                        "tecnico_id": "ID",
+                        "nombre": "Técnico",
+                        "calificacion_prom": "Calificación",
+                        "costo": "Oferta (MXN)",
+                    }
+                ),
+                use_container_width=True, hide_index=True,
+            )
+            ganador = comparativo.iloc[0]
+            st.caption(f"Ganaría automáticamente: **{ganador.nombre}** (mejor calificación; precio solo desempata en caso de empate).")
+            if st.button("Cerrar puja y asignar automáticamente", key=f"cerrar_puja_{fila.solicitud_id}", use_container_width=True):
+                datos.cerrar_puja(fila.solicitud_id)
+                st.success("Puja cerrada, técnico asignado")
+                st.rerun()
 
 
 def _tab_tecnicos():

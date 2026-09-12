@@ -70,5 +70,41 @@ def actualizar_estatus_solicitud(solicitud_id, nuevo_estatus):
     return _backend().actualizar_estatus_solicitud(solicitud_id, nuevo_estatus)
 
 
+def cotizar_directo(solicitud_id, costo_reparacion):
+    return _backend().cotizar_directo(solicitud_id, costo_reparacion)
+
+
+def solicitar_visita(solicitud_id, costo_visita):
+    return _backend().solicitar_visita(solicitud_id, costo_visita)
+
+
+def subir_foto_diagnostico(solicitud_id, nombre_archivo, bytes_imagen, mime_type):
+    return _backend().subir_foto_diagnostico(solicitud_id, nombre_archivo, bytes_imagen, mime_type)
+
+
+def subir_bitacora(solicitud_id, diagnostico, foto_url, costo_reparacion):
+    return _backend().subir_bitacora(solicitud_id, diagnostico, foto_url, costo_reparacion)
+
+
+def aceptar_solicitud(solicitud_id):
+    return _backend().aceptar_solicitud(solicitud_id)
+
+
+def rechazar_solicitud(solicitud_id):
+    return _backend().rechazar_solicitud(solicitud_id)
+
+
+def obtener_pujas(solicitud_id=None):
+    return _backend().obtener_pujas(solicitud_id)
+
+
+def ofertar_puja(solicitud_id, tecnico_id, costo):
+    return _backend().ofertar_puja(solicitud_id, tecnico_id, costo)
+
+
+def cerrar_puja(solicitud_id):
+    return _backend().cerrar_puja(solicitud_id)
+
+
 def calificar_solicitud(solicitud_id, calificacion):
     return _backend().calificar_solicitud(solicitud_id, calificacion)

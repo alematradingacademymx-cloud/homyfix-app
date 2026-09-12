@@ -20,6 +20,7 @@ def pagina():
                 if zona and descripcion:
                     nuevo_id = datos.crear_solicitud(cliente_id, nombre, categoria, zona, descripcion, urgencia)
                     st.success(f"¡Listo! Tu solicitud {nuevo_id} fue enviada. Te avisaremos en cuanto tengamos un técnico cerca.")
+                    st.rerun()
                 else:
                     st.warning("Completa tu zona y una breve descripción")
 
@@ -32,14 +33,40 @@ def pagina():
             with st.container(border=True):
                 st.markdown(f"**{fila.solicitud_id}** · {fila.categoria} · {fila.zona} &nbsp;&nbsp;{badge_estatus(fila.estatus)}", unsafe_allow_html=True)
                 st.write(fila.descripcion)
-                if fila.tecnico_id:
+
+                if fila.estatus in ("Asignado", "En Visita", "Cotizado", "Aceptado", "En curso"):
+                    st.info(
+                        f"🔐 Código de seguridad: **{fila.codigo_seguridad}** — dáselo al técnico cuando "
+                        f"llegue a tu casa para confirmar que sí es de Homyfix."
+                    )
+
+                if fila.estatus == "En Puja":
+                    st.warning("No aceptaste la cotización anterior. Estamos buscando otro técnico con mejor precio para ti — te avisaremos en cuanto tengamos una nueva propuesta.")
+
+                if fila.estatus == "Cotizado":
+                    if fila.tipo_cotizacion == "Visita" and fila.costo_visita:
+                        st.caption(f"Costo de la visita/diagnóstico: ${fila.costo_visita}")
+                    st.markdown(f"### Costo de la reparación: ${fila.costo_reparacion}")
+                    if fila.diagnostico:
+                        st.caption(f"Diagnóstico del técnico: {fila.diagnostico}")
+                    c1, c2 = st.columns(2)
+                    if c1.button("✅ Aceptar", key=f"aceptar_{fila.solicitud_id}", use_container_width=True):
+                        datos.aceptar_solicitud(fila.solicitud_id)
+                        st.rerun()
+                    if c2.button("❌ Rechazar (buscar otro precio)", key=f"rechazar_{fila.solicitud_id}", use_container_width=True):
+                        datos.rechazar_solicitud(fila.solicitud_id)
+                        st.rerun()
+
+                if fila.tecnico_id and fila.estatus in ("Aceptado", "En curso", "Completado", "Calificado"):
                     tecnico = datos.obtener_tecnicos()
                     tecnico = tecnico[tecnico.tecnico_id == fila.tecnico_id]
                     if not tecnico.empty:
                         t = tecnico.iloc[0]
-                        st.caption(f"Técnico asignado: {t.nombre} · Costo: ${fila.costo}")
+                        st.caption(f"Técnico asignado: {t.nombre} · Costo acordado: ${fila.costo_reparacion}")
+
                 if fila.estatus == "Completado":
-                    calificacion = st.slider("¿Cómo calificarías el servicio?", 1, 5, 5, key=f"cal_{fila.solicitud_id}")
+                    etiqueta = "¿Cómo calificarías la visita y la compostura?" if fila.tipo_cotizacion == "Visita" else "¿Cómo calificarías la compostura?"
+                    calificacion = st.slider(etiqueta, 1, 5, 5, key=f"cal_{fila.solicitud_id}")
                     if st.button("Enviar calificación", key=f"btn_cal_{fila.solicitud_id}"):
                         datos.calificar_solicitud(fila.solicitud_id, calificacion)
                         st.rerun()

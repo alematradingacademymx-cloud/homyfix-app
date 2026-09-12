@@ -32,6 +32,10 @@ header[data-testid="stHeader"] {background: transparent;}
 }
 .badge-pendiente {background:#FFF1E0; color:#B5610A;}
 .badge-asignado {background:#E4EEFF; color:#1D4ED8;}
+.badge-visita {background:#EDE4FF; color:#5B21B6;}
+.badge-cotizado {background:#FFF9C4; color:#8A6D00;}
+.badge-puja {background:#FFE4F0; color:#BE185D;}
+.badge-aceptado {background:#DCFCE7; color:#15803D;}
 .badge-encurso {background:#FDE8FF; color:#A21CAF;}
 .badge-completado {background:#E4FFEE; color:#0F8A3E;}
 .badge-calificado {background:#EAF7EA; color:#1C7C33;}
@@ -53,6 +57,10 @@ def encabezado(titulo: str, subtitulo: str = ""):
 _BADGE_CLASE = {
     "Pendiente": "badge-pendiente",
     "Asignado": "badge-asignado",
+    "En Visita": "badge-visita",
+    "Cotizado": "badge-cotizado",
+    "En Puja": "badge-puja",
+    "Aceptado": "badge-aceptado",
     "En curso": "badge-encurso",
     "Completado": "badge-completado",
     "Calificado": "badge-calificado",

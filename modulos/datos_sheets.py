@@ -5,12 +5,13 @@ Expone exactamente las mismas funciones que modulos/datos_demo.py, para que
 modulos/datos.py pueda intercambiarlas sin que el resto de la app se entere.
 """
 
+import base64
 import requests
 import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-TIMEOUT = 15
+TIMEOUT = 30
 
 
 def _config():
@@ -46,29 +47,33 @@ def autenticar(usuario, password):
 
 # ---------- Técnicos ----------
 
+def _es_verdadero(valor) -> bool:
+    if isinstance(valor, bool):
+        return valor
+    return str(valor).strip().lower() in ("si", "sí", "true", "1", "yes", "verdadero")
+
+
 def obtener_tecnicos() -> pd.DataFrame:
     resp = _post("obtener_tecnicos")
     datos = resp.get("datos", [])
+    columnas = ["tecnico_id", "nombre", "especialidad", "zona", "telefono",
+                "estatus", "membresia_al_corriente", "calificacion_prom",
+                "num_calificaciones", "rechazos"]
     if not datos:
-        return pd.DataFrame(columns=[
-            "tecnico_id", "nombre", "especialidad", "zona", "telefono",
-            "estatus", "membresia_al_corriente", "calificacion_prom",
-        ])
+        return pd.DataFrame(columns=columnas)
     df = pd.DataFrame(datos)
     df = df.rename(columns={
         "TecnicoID": "tecnico_id", "Nombre": "nombre", "Especialidad": "especialidad",
         "Zona": "zona", "Telefono": "telefono", "Estatus": "estatus",
         "MembresiaAlCorriente": "membresia_al_corriente", "CalificacionProm": "calificacion_prom",
+        "NumCalificaciones": "num_calificaciones", "Rechazos": "rechazos",
     })
     if "membresia_al_corriente" in df.columns:
         df["membresia_al_corriente"] = df["membresia_al_corriente"].apply(_es_verdadero)
+    for col in ("calificacion_prom", "num_calificaciones", "rechazos"):
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
     return df
-
-
-def _es_verdadero(valor) -> bool:
-    if isinstance(valor, bool):
-        return valor
-    return str(valor).strip().lower() in ("si", "sí", "true", "1", "yes", "verdadero")
 
 
 def agregar_tecnico(nombre, especialidad, zona, telefono):
@@ -86,21 +91,30 @@ def actualizar_membresia_tecnico(tecnico_id, al_corriente: bool):
 
 # ---------- Solicitudes ----------
 
+_COLS_SOLICITUDES_MAP = {
+    "SolicitudID": "solicitud_id", "ClienteID": "cliente_id", "ClienteNombre": "cliente_nombre",
+    "Categoria": "categoria", "Zona": "zona", "Descripcion": "descripcion", "Urgencia": "urgencia",
+    "Estatus": "estatus", "TecnicoID": "tecnico_id", "Costo": "costo",
+    "Calificacion": "calificacion", "Creado": "creado",
+    "CodigoSeguridad": "codigo_seguridad", "TipoCotizacion": "tipo_cotizacion",
+    "CostoVisita": "costo_visita", "CostoReparacion": "costo_reparacion",
+    "Diagnostico": "diagnostico", "FotoURL": "foto_url", "TecnicosRechazados": "tecnicos_rechazados",
+}
+
+_COLUMNAS_SOLICITUDES = list(_COLS_SOLICITUDES_MAP.values())
+
+
 def obtener_solicitudes() -> pd.DataFrame:
     resp = _post("obtener_solicitudes")
     datos = resp.get("datos", [])
-    columnas = ["solicitud_id", "cliente_id", "cliente_nombre", "categoria", "zona",
-                "descripcion", "urgencia", "estatus", "tecnico_id", "costo", "calificacion", "creado"]
     if not datos:
-        return pd.DataFrame(columns=columnas)
-    df = pd.DataFrame(datos).rename(columns={
-        "SolicitudID": "solicitud_id", "ClienteID": "cliente_id", "ClienteNombre": "cliente_nombre",
-        "Categoria": "categoria", "Zona": "zona", "Descripcion": "descripcion", "Urgencia": "urgencia",
-        "Estatus": "estatus", "TecnicoID": "tecnico_id", "Costo": "costo",
-        "Calificacion": "calificacion", "Creado": "creado",
-    })
+        return pd.DataFrame(columns=_COLUMNAS_SOLICITUDES)
+    df = pd.DataFrame(datos).rename(columns=_COLS_SOLICITUDES_MAP)
     if "creado" in df.columns:
         df["creado"] = pd.to_datetime(df["creado"], errors="coerce")
+    for col in ("costo", "costo_visita", "costo_reparacion", "calificacion"):
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
     return df
 
 
@@ -118,6 +132,59 @@ def asignar_tecnico(solicitud_id, tecnico_id, costo=None):
 
 def actualizar_estatus_solicitud(solicitud_id, nuevo_estatus):
     _post("actualizar_estatus_solicitud", solicitud_id=solicitud_id, nuevo_estatus=nuevo_estatus)
+
+
+def cotizar_directo(solicitud_id, costo_reparacion):
+    _post("cotizar_directo", solicitud_id=solicitud_id, costo_reparacion=costo_reparacion)
+
+
+def solicitar_visita(solicitud_id, costo_visita):
+    _post("solicitar_visita", solicitud_id=solicitud_id, costo_visita=costo_visita)
+
+
+def subir_foto_diagnostico(solicitud_id, nombre_archivo, bytes_imagen, mime_type):
+    contenido_b64 = base64.b64encode(bytes_imagen).decode("ascii")
+    resp = _post(
+        "subir_foto_diagnostico", solicitud_id=solicitud_id, nombre_archivo=nombre_archivo,
+        mime_type=mime_type, contenido_base64=contenido_b64,
+    )
+    return resp.get("foto_url")
+
+
+def subir_bitacora(solicitud_id, diagnostico, foto_url, costo_reparacion):
+    _post(
+        "subir_bitacora", solicitud_id=solicitud_id, diagnostico=diagnostico,
+        foto_url=foto_url or "", costo_reparacion=costo_reparacion,
+    )
+
+
+def aceptar_solicitud(solicitud_id):
+    _post("aceptar_solicitud", solicitud_id=solicitud_id)
+
+
+def rechazar_solicitud(solicitud_id):
+    _post("rechazar_solicitud", solicitud_id=solicitud_id)
+
+
+def obtener_pujas(solicitud_id=None) -> pd.DataFrame:
+    resp = _post("obtener_pujas", solicitud_id=solicitud_id or "")
+    datos = resp.get("datos", [])
+    columnas = ["solicitud_id", "tecnico_id", "costo", "fecha"]
+    if not datos:
+        return pd.DataFrame(columns=columnas)
+    df = pd.DataFrame(datos).rename(columns={
+        "SolicitudID": "solicitud_id", "TecnicoID": "tecnico_id", "Costo": "costo", "Fecha": "fecha",
+    })
+    df["costo"] = pd.to_numeric(df["costo"], errors="coerce")
+    return df
+
+
+def ofertar_puja(solicitud_id, tecnico_id, costo):
+    _post("ofertar_puja", solicitud_id=solicitud_id, tecnico_id=tecnico_id, costo=costo)
+
+
+def cerrar_puja(solicitud_id):
+    return _post("cerrar_puja", solicitud_id=solicitud_id)
 
 
 def calificar_solicitud(solicitud_id, calificacion):

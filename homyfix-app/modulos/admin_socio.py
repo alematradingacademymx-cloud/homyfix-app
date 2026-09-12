@@ -17,7 +17,7 @@ def pagina():
 
     completadas = (solicitudes.estatus.isin(["Completado", "Calificado"])).sum()
     pendientes = (solicitudes.estatus == "Pendiente").sum()
-    en_proceso = (solicitudes.estatus.isin(["Asignado", "En curso"])).sum()
+    en_proceso = (solicitudes.estatus.isin(["Asignado", "En Visita", "Cotizado", "En Puja", "Aceptado", "En curso"])).sum()
 
     c1, c2, c3, c4 = st.columns(4)
     with c1:
