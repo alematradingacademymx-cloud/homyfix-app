@@ -32,7 +32,7 @@ def pagina():
         _tab_puja()
 
     with tab_tecnicos:
-        _tab_tecnicos()
+        _tab_tecnicos(tecnicos_df)
 
     with tab_registros:
         _tab_registros(registros_pendientes)
@@ -161,9 +161,7 @@ def _tab_puja():
                 st.rerun()
 
 
-def _tab_tecnicos():
-    df = datos.obtener_tecnicos()
-
+def _tab_tecnicos(df):
     pendientes = df[df.estatus.astype(str).str.strip().str.lower().str.startswith("pendiente")] if not df.empty else df
     if not pendientes.empty:
         st.markdown(

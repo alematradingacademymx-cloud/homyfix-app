@@ -27,6 +27,13 @@ def _post(action, **params):
     return r.json()
 
 
+def _invalidar_cache():
+    """Se llama después de cualquier escritura para que la próxima lectura
+    (tabla, tab, refresco de página) traiga el dato actualizado en vez del
+    cacheado."""
+    st.cache_data.clear()
+
+
 def inicializar_datos():
     # No hace falta sembrar nada: el Apps Script crea las pestañas solo con
     # sus encabezados la primera vez que se usan.
@@ -53,6 +60,7 @@ def _es_verdadero(valor) -> bool:
     return str(valor).strip().lower() in ("si", "sí", "true", "1", "yes", "verdadero")
 
 
+@st.cache_data(ttl=15, show_spinner=False)
 def obtener_tecnicos() -> pd.DataFrame:
     resp = _post("obtener_tecnicos")
     datos = resp.get("datos", [])
@@ -79,15 +87,18 @@ def obtener_tecnicos() -> pd.DataFrame:
 
 def agregar_tecnico(nombre, especialidad, zona, telefono):
     resp = _post("agregar_tecnico", nombre=nombre, especialidad=especialidad, zona=zona, telefono=telefono)
+    _invalidar_cache()
     return resp.get("tecnico_id")
 
 
 def actualizar_estatus_tecnico(tecnico_id, nuevo_estatus):
     _post("actualizar_estatus_tecnico", tecnico_id=tecnico_id, nuevo_estatus=nuevo_estatus)
+    _invalidar_cache()
 
 
 def actualizar_membresia_tecnico(tecnico_id, al_corriente: bool):
     _post("actualizar_membresia_tecnico", tecnico_id=tecnico_id, al_corriente="SI" if al_corriente else "")
+    _invalidar_cache()
 
 
 # ---------- Solicitudes ----------
@@ -105,6 +116,7 @@ _COLS_SOLICITUDES_MAP = {
 _COLUMNAS_SOLICITUDES = list(_COLS_SOLICITUDES_MAP.values())
 
 
+@st.cache_data(ttl=15, show_spinner=False)
 def obtener_solicitudes() -> pd.DataFrame:
     resp = _post("obtener_solicitudes")
     datos = resp.get("datos", [])
@@ -124,23 +136,28 @@ def crear_solicitud(cliente_id, cliente_nombre, categoria, zona, descripcion, ur
         "crear_solicitud", cliente_id=cliente_id, cliente_nombre=cliente_nombre,
         categoria=categoria, zona=zona, descripcion=descripcion, urgencia=urgencia,
     )
+    _invalidar_cache()
     return resp.get("solicitud_id")
 
 
 def asignar_tecnico(solicitud_id, tecnico_id, costo=None):
     _post("asignar_tecnico", solicitud_id=solicitud_id, tecnico_id=tecnico_id, costo=costo or "")
+    _invalidar_cache()
 
 
 def actualizar_estatus_solicitud(solicitud_id, nuevo_estatus):
     _post("actualizar_estatus_solicitud", solicitud_id=solicitud_id, nuevo_estatus=nuevo_estatus)
+    _invalidar_cache()
 
 
 def cotizar_directo(solicitud_id, costo_reparacion):
     _post("cotizar_directo", solicitud_id=solicitud_id, costo_reparacion=costo_reparacion)
+    _invalidar_cache()
 
 
 def solicitar_visita(solicitud_id, costo_visita):
     _post("solicitar_visita", solicitud_id=solicitud_id, costo_visita=costo_visita)
+    _invalidar_cache()
 
 
 def subir_foto_diagnostico(solicitud_id, nombre_archivo, bytes_imagen, mime_type):
@@ -157,16 +174,20 @@ def subir_bitacora(solicitud_id, diagnostico, foto_url, costo_reparacion):
         "subir_bitacora", solicitud_id=solicitud_id, diagnostico=diagnostico,
         foto_url=foto_url or "", costo_reparacion=costo_reparacion,
     )
+    _invalidar_cache()
 
 
 def aceptar_solicitud(solicitud_id):
     _post("aceptar_solicitud", solicitud_id=solicitud_id)
+    _invalidar_cache()
 
 
 def rechazar_solicitud(solicitud_id):
     _post("rechazar_solicitud", solicitud_id=solicitud_id)
+    _invalidar_cache()
 
 
+@st.cache_data(ttl=15, show_spinner=False)
 def obtener_pujas(solicitud_id=None) -> pd.DataFrame:
     resp = _post("obtener_pujas", solicitud_id=solicitud_id or "")
     datos = resp.get("datos", [])
@@ -182,14 +203,18 @@ def obtener_pujas(solicitud_id=None) -> pd.DataFrame:
 
 def ofertar_puja(solicitud_id, tecnico_id, costo):
     _post("ofertar_puja", solicitud_id=solicitud_id, tecnico_id=tecnico_id, costo=costo)
+    _invalidar_cache()
 
 
 def cerrar_puja(solicitud_id):
-    return _post("cerrar_puja", solicitud_id=solicitud_id)
+    resp = _post("cerrar_puja", solicitud_id=solicitud_id)
+    _invalidar_cache()
+    return resp
 
 
 def calificar_solicitud(solicitud_id, calificacion):
     _post("calificar_solicitud", solicitud_id=solicitud_id, calificacion=calificacion)
+    _invalidar_cache()
 
 
 # ---------- Registro / alta con documentos (técnico y cliente) ----------
@@ -209,9 +234,11 @@ def enviar_solicitud_registro(tipo, nombre, correo, telefono, direccion=None, ed
             params[f"doc_{campo}_mime"] = archivo.type
             params[f"doc_{campo}_b64"] = base64.b64encode(archivo.getvalue()).decode("ascii")
     resp = _post("enviar_solicitud_registro", **params)
+    _invalidar_cache()
     return resp.get("registro_id")
 
 
+@st.cache_data(ttl=15, show_spinner=False)
 def obtener_solicitudes_registro(estatus="Pendiente") -> pd.DataFrame:
     resp = _post("obtener_solicitudes_registro", estatus=estatus or "")
     datos = resp.get("datos", [])
@@ -240,12 +267,18 @@ def obtener_solicitudes_registro(estatus="Pendiente") -> pd.DataFrame:
 
 
 def aprobar_solicitud_registro(registro_id):
-    return _post("aprobar_solicitud_registro", registro_id=registro_id)
+    resp = _post("aprobar_solicitud_registro", registro_id=registro_id)
+    _invalidar_cache()
+    return resp
 
 
 def rechazar_solicitud_registro(registro_id):
-    return _post("rechazar_solicitud_registro", registro_id=registro_id)
+    resp = _post("rechazar_solicitud_registro", registro_id=registro_id)
+    _invalidar_cache()
+    return resp
 
 
 def canjear_codigo(codigo, usuario, password):
-    return _post("canjear_codigo", codigo=codigo, usuario=usuario, password=password)
+    resp = _post("canjear_codigo", codigo=codigo, usuario=usuario, password=password)
+    _invalidar_cache()
+    return resp
