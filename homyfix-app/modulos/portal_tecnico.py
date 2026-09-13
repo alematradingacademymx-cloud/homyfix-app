@@ -1,6 +1,6 @@
 import pandas as pd
 import streamlit as st
-from modulos import datos, geo
+from modulos import datos
 from modulos.estilos import encabezado, badge_estatus
 
 
@@ -58,46 +58,14 @@ def pagina():
         if mias.empty:
             st.info("Aún no tienes trabajos asignados.")
 
-        # El widget de ubicación del navegador solo se puede mostrar UNA vez
-        # por corrida de la página (ver geo.obtener_ubicacion_navegador), así
-        # que si tienes varios trabajos activos primero eliges para cuál con
-        # un botón normal, y aquí arriba se muestra el widget de verdad solo
-        # para ese trabajo elegido.
-        solicitud_para_ubicacion = st.session_state.get("_pedir_ubicacion_solicitud")
-        if solicitud_para_ubicacion:
-            with st.container(border=True):
-                st.markdown(f"**Comparte tu ubicación para {solicitud_para_ubicacion}**")
-                nueva_ubic = geo.obtener_ubicacion_navegador()
-                if nueva_ubic:
-                    datos.actualizar_ubicacion_tecnico(solicitud_para_ubicacion, nueva_ubic[0], nueva_ubic[1])
-                    st.session_state["_pedir_ubicacion_solicitud"] = None
-                    st.success("Ubicación actualizada, el cliente ya la puede ver.")
-                    st.rerun()
-                if st.button("Cancelar", key="cancelar_pedir_ubicacion"):
-                    st.session_state["_pedir_ubicacion_solicitud"] = None
-                    st.rerun()
-
         for _, fila in mias.sort_values("creado", ascending=False).iterrows():
             with st.container(border=True):
                 st.markdown(f"**{fila.solicitud_id}** · {fila.categoria} · {fila.zona} &nbsp;&nbsp;{badge_estatus(fila.estatus)}", unsafe_allow_html=True)
                 st.write(fila.descripcion)
                 st.caption(f"Cliente: {fila.cliente_nombre} · Urgencia: {fila.urgencia}")
 
-                if fila.estatus in ("Asignado", "En Visita", "Cotizado", "Aceptado", "En curso"):
+                if fila.estatus in ("Asignado", "En Visita", "Cotizado", "Aceptado", "En Camino", "Cerca", "En curso"):
                     st.info(f"🔐 Código de seguridad del cliente: **{fila.codigo_seguridad}** — pídeselo al llegar para confirmar que estás en la casa correcta.")
-
-                if fila.estatus in ("Aceptado", "En curso"):
-                    hora = fila.get("ubicacion_tecnico_hora")
-                    if hora and not pd.isna(hora):
-                        st.caption(f"📍 Última ubicación compartida: {hora}")
-                    if solicitud_para_ubicacion != fila.solicitud_id:
-                        if st.button(
-                            "📍 Compartir mi ubicación (voy en camino)",
-                            key=f"pedir_geo_{fila.solicitud_id}",
-                            use_container_width=True,
-                        ):
-                            st.session_state["_pedir_ubicacion_solicitud"] = fila.solicitud_id
-                            st.rerun()
 
                 if fila.estatus == "Asignado":
                     modo = st.radio(
@@ -141,12 +109,24 @@ def pagina():
                     st.info(f"Esperando que el cliente acepte o rechace el costo de ${fila.costo_reparacion}")
 
                 elif fila.estatus == "Aceptado":
-                    if st.button("Marcar en curso", key=f"tec_curso_{fila.solicitud_id}"):
+                    st.caption("El cliente ya aceptó la cotización. En cuanto salgas hacia su domicilio, presiona el botón de abajo.")
+                    if st.button("🚗 Iniciar viaje", key=f"tec_camino_{fila.solicitud_id}", use_container_width=True):
+                        datos.actualizar_estatus_solicitud(fila.solicitud_id, "En Camino")
+                        st.rerun()
+
+                elif fila.estatus == "En Camino":
+                    st.caption("El cliente ya ve que vas en camino. Cuando estés a menos de 100 metros de su domicilio, presiona el botón de abajo.")
+                    if st.button("📍 Ya estoy cerca (menos de 100 m)", key=f"tec_cerca_{fila.solicitud_id}", use_container_width=True):
+                        datos.actualizar_estatus_solicitud(fila.solicitud_id, "Cerca")
+                        st.rerun()
+
+                elif fila.estatus == "Cerca":
+                    if st.button("🏠 Ya llegué", key=f"tec_llegue_{fila.solicitud_id}", use_container_width=True):
                         datos.actualizar_estatus_solicitud(fila.solicitud_id, "En curso")
                         st.rerun()
 
                 elif fila.estatus == "En curso":
-                    if st.button("Marcar completado", key=f"tec_completo_{fila.solicitud_id}"):
+                    if st.button("✅ Marcar completado", key=f"tec_completo_{fila.solicitud_id}", use_container_width=True):
                         datos.actualizar_estatus_solicitud(fila.solicitud_id, "Completado")
                         st.rerun()
 

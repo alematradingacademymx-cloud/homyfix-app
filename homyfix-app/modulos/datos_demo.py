@@ -21,7 +21,7 @@ import streamlit as st
 
 ESTATUS_SOLICITUD = [
     "Pendiente", "Asignado", "En Visita", "Cotizado", "En Puja",
-    "Aceptado", "En curso", "Completado", "Calificado", "Cancelado",
+    "Aceptado", "En Camino", "Cerca", "En curso", "Completado", "Calificado", "Cancelado",
 ]
 ESTATUS_TECNICO = ["Pendiente de validación", "Activo", "Suspendido"]
 

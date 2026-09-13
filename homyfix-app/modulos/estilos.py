@@ -62,6 +62,8 @@ header[data-testid="stHeader"] {{background: transparent;}}
 .badge-cotizado {{background:#FFF3D6 !important; color:#8A5A00 !important;}}
 .badge-puja {{background:#FFE4F0 !important; color:#BE185D !important;}}
 .badge-aceptado {{background:{VERDE} !important; color:#1F3D00 !important;}}
+.badge-encamino {{background:#FFE9C7 !important; color:#8A5A00 !important;}}
+.badge-cerca {{background:#FFD9A0 !important; color:#7A3E00 !important;}}
 .badge-encurso {{background:#F1E4FF !important; color:{MORADO_OSCURO} !important;}}
 .badge-completado {{background:{VERDE} !important; color:#1F3D00 !important;}}
 .badge-calificado {{background:#EAF7EA !important; color:#1C7C33 !important;}}
@@ -154,6 +156,69 @@ header[data-testid="stHeader"] {{background: transparent;}}
     border: 2px dashed {NARANJA} !important;
     border-radius: 8px !important;
 }}
+
+/* Línea de tiempo del servicio (paso a paso, sin mapa) */
+.homyfix-timeline {{
+    margin: 0.6rem 0 0.4rem 0;
+    padding: 0;
+}}
+.homyfix-timeline .paso {{
+    position: relative;
+    padding: 0 0 1.3rem 2.1rem;
+}}
+.homyfix-timeline .paso:last-child {{
+    padding-bottom: 0;
+}}
+.homyfix-timeline .paso::before {{
+    /* la línea vertical que conecta los pasos */
+    content: "";
+    position: absolute;
+    left: 0.55rem;
+    top: 1.5rem;
+    bottom: -0.2rem;
+    width: 2px;
+    background: #DCE2ED;
+}}
+.homyfix-timeline .paso:last-child::before {{
+    display: none;
+}}
+.homyfix-timeline .paso.hecho::before {{
+    background: {NARANJA};
+}}
+.homyfix-timeline .circulo {{
+    position: absolute;
+    left: 0;
+    top: 0.15rem;
+    width: 1.2rem;
+    height: 1.2rem;
+    border-radius: 50%;
+    background: #DCE2ED;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: #FFFFFF;
+    font-weight: 700;
+}}
+.homyfix-timeline .paso.hecho .circulo {{
+    background: {NARANJA};
+}}
+.homyfix-timeline .paso.actual .circulo {{
+    background: {AZUL_PRIMARIO};
+    box-shadow: 0 0 0 4px #DCE7FA;
+}}
+.homyfix-timeline .texto {{
+    font-size: 0.92rem;
+    color: #8B93A3;
+    line-height: 1.2rem;
+}}
+.homyfix-timeline .paso.hecho .texto {{
+    color: #3A4256;
+}}
+.homyfix-timeline .paso.actual .texto {{
+    color: {AZUL_PRIMARIO};
+    font-weight: 700;
+}}
 </style>
 """
 
@@ -201,6 +266,8 @@ _BADGE_CLASE = {
     "Cotizado": "badge-cotizado",
     "En Puja": "badge-puja",
     "Aceptado": "badge-aceptado",
+    "En Camino": "badge-encamino",
+    "Cerca": "badge-cerca",
     "En curso": "badge-encurso",
     "Completado": "badge-completado",
     "Calificado": "badge-calificado",
@@ -211,3 +278,45 @@ _BADGE_CLASE = {
 def badge_estatus(estatus: str) -> str:
     clase = _BADGE_CLASE.get(estatus, "badge-pendiente")
     return f"<span class='badge {clase}'>{estatus}</span>"
+
+
+# Pasos del "viaje" del servicio que se le muestran al cliente como línea de
+# tiempo, en vez de un mapa — el técnico avanza estos pasos a mano desde su
+# panel (ver portal_tecnico.py). "Calificado" se trata como el mismo punto
+# final que "Completado" (la calificación es un paso aparte, no una etapa
+# más del viaje).
+PASOS_SOLICITUD = [
+    ("Pendiente", "Buscando un técnico disponible"),
+    ("Asignado", "Técnico asignado, preparando tu cotización"),
+    ("Cotizado", "Cotización enviada, esperando tu respuesta"),
+    ("Aceptado", "Cotización aceptada, esperando que el técnico inicie su viaje"),
+    ("En Camino", "El técnico ha comenzado su trayecto"),
+    ("Cerca", "El técnico está cerca (a menos de 100 m)"),
+    ("En curso", "El técnico ha llegado y está trabajando"),
+    ("Completado", "Servicio concluido"),
+]
+_INDICE_PASO = {estatus: i for i, (estatus, _) in enumerate(PASOS_SOLICITUD)}
+
+
+def linea_tiempo(estatus_actual: str):
+    """Dibuja la línea de tiempo del servicio para el estatus dado. No dibuja
+    nada para estatus fuera del flujo lineal (p. ej. 'En Puja' o
+    'Cancelado') — esos casos ya se explican con un mensaje aparte."""
+    indice_actual = _INDICE_PASO.get("Completado" if estatus_actual == "Calificado" else estatus_actual)
+    if indice_actual is None:
+        return
+    filas = []
+    for i, (_, etiqueta) in enumerate(PASOS_SOLICITUD):
+        if i < indice_actual:
+            clase, icono = "hecho", "✓"
+        elif i == indice_actual:
+            clase, icono = "actual", ""
+        else:
+            clase, icono = "pendiente", ""
+        filas.append(
+            f"<div class='paso {clase}'>"
+            f"<div class='circulo'>{icono}</div>"
+            f"<div class='texto'>{etiqueta}</div>"
+            f"</div>"
+        )
+    st.markdown(f"<div class='homyfix-timeline'>{''.join(filas)}</div>", unsafe_allow_html=True)

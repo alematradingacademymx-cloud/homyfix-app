@@ -1,6 +1,3 @@
 streamlit>=1.38
 pandas
 requests
-folium
-streamlit-folium
-streamlit-geolocation

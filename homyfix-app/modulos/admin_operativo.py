@@ -44,7 +44,7 @@ def _tab_solicitudes():
         st.info("Todavía no hay solicitudes registradas.")
         return
 
-    activas = df[df.estatus.isin(["Pendiente", "Asignado", "En Visita", "Cotizado", "En Puja", "Aceptado", "En curso"])]
+    activas = df[df.estatus.isin(["Pendiente", "Asignado", "En Visita", "Cotizado", "En Puja", "Aceptado", "En Camino", "Cerca", "En curso"])]
     st.caption(f"{len(activas)} solicitud(es) activa(s)")
 
     for _, fila in df.sort_values("creado", ascending=False).iterrows():
@@ -58,7 +58,7 @@ def _tab_solicitudes():
                 )
                 st.write(fila.descripcion)
                 st.caption(f"Cliente: {fila.cliente_nombre} · Urgencia: {fila.urgencia}")
-                if fila.estatus in ("Asignado", "En Visita", "Cotizado", "Aceptado", "En curso"):
+                if fila.estatus in ("Asignado", "En Visita", "Cotizado", "Aceptado", "En Camino", "Cerca", "En curso"):
                     st.caption(f"🔐 Código de seguridad: **{fila.codigo_seguridad}**")
                 if fila.estatus == "Cotizado" and fila.costo_reparacion:
                     st.caption(f"Cotización enviada: ${fila.costo_reparacion} ({fila.tipo_cotizacion})")
@@ -83,7 +83,11 @@ def _tab_solicitudes():
                         else:
                             st.warning("Elige un técnico primero")
                 elif fila.estatus == "Aceptado":
-                    st.caption("Esperando que el técnico marque 'En curso'")
+                    st.caption("Esperando que el técnico inicie su viaje")
+                elif fila.estatus == "En Camino":
+                    st.caption("El técnico va en camino")
+                elif fila.estatus == "Cerca":
+                    st.caption("El técnico está cerca del domicilio")
                 elif fila.estatus == "En curso":
                     if st.button("Marcar completado", key=f"avanzar_{fila.solicitud_id}", use_container_width=True):
                         datos.actualizar_estatus_solicitud(fila.solicitud_id, "Completado")
