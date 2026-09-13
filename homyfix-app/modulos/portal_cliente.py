@@ -1,6 +1,24 @@
+import pandas as pd
 import streamlit as st
 from modulos import datos
 from modulos.estilos import encabezado, badge_estatus, linea_tiempo
+
+
+def _es_si(valor):
+    """True si el valor (bool real o texto 'True'/'TRUE' que llega de Sheets) es afirmativo."""
+    return valor in (True, "True", "TRUE", "true")
+
+
+def _tiene_valor(valor):
+    """Distingue 'no se guardó nada todavía' (None/NaN/'') de un valor real (incluido False)."""
+    if valor is None:
+        return False
+    try:
+        if pd.isna(valor):
+            return False
+    except (TypeError, ValueError):
+        pass
+    return valor != ""
 
 
 def pagina():
@@ -75,9 +93,66 @@ def pagina():
 
                 if fila.estatus == "Completado":
                     etiqueta = "¿Cómo calificarías la visita y la compostura?" if fila.tipo_cotizacion == "Visita" else "¿Cómo calificarías la compostura?"
-                    calificacion = st.slider(etiqueta, 1, 5, 5, key=f"cal_{fila.solicitud_id}")
-                    if st.button("Enviar calificación", key=f"btn_cal_{fila.solicitud_id}"):
-                        datos.calificar_solicitud(fila.solicitud_id, calificacion)
+                    st.markdown(f"**{etiqueta}**")
+
+                    key_cal = f"cal_{fila.solicitud_id}"
+                    st.session_state.setdefault(key_cal, 5)
+                    cols_num = st.columns(5)
+                    for i, col in enumerate(cols_num, start=1):
+                        if col.button(
+                            str(i), key=f"{key_cal}_btn_{i}", use_container_width=True,
+                            type="primary" if st.session_state[key_cal] == i else "secondary",
+                        ):
+                            st.session_state[key_cal] = i
+                            st.rerun()
+
+                    key_cobro = f"cobro_{fila.solicitud_id}"
+                    st.session_state.setdefault(key_cobro, "correcto")
+                    st.caption("¿El cobro fue el indicado por la app?")
+                    c1, c2 = st.columns(2)
+                    if c1.button(
+                        "💰 Cobró lo indicado", key=f"{key_cobro}_ok", use_container_width=True,
+                        type="primary" if st.session_state[key_cobro] == "correcto" else "secondary",
+                    ):
+                        st.session_state[key_cobro] = "correcto"
+                        st.rerun()
+                    if c2.button(
+                        "⚠️ Cobró más de lo indicado", key=f"{key_cobro}_mas", use_container_width=True,
+                        type="primary" if st.session_state[key_cobro] == "mas" else "secondary",
+                    ):
+                        st.session_state[key_cobro] = "mas"
+                        st.rerun()
+
+                    key_prof = f"prof_{fila.solicitud_id}"
+                    st.session_state.setdefault(key_prof, "si")
+                    st.caption("¿El servicio fue limpio y profesional?")
+                    c3, c4 = st.columns(2)
+                    if c3.button(
+                        "✅ Sí, limpio y profesional", key=f"{key_prof}_si", use_container_width=True,
+                        type="primary" if st.session_state[key_prof] == "si" else "secondary",
+                    ):
+                        st.session_state[key_prof] = "si"
+                        st.rerun()
+                    if c4.button(
+                        "❌ No", key=f"{key_prof}_no", use_container_width=True,
+                        type="primary" if st.session_state[key_prof] == "no" else "secondary",
+                    ):
+                        st.session_state[key_prof] = "no"
+                        st.rerun()
+
+                    if st.button("Enviar calificación", key=f"btn_{key_cal}", use_container_width=True):
+                        datos.calificar_solicitud(
+                            fila.solicitud_id,
+                            st.session_state[key_cal],
+                            cobro_correcto=(st.session_state[key_cobro] == "correcto"),
+                            servicio_profesional=(st.session_state[key_prof] == "si"),
+                        )
                         st.rerun()
                 elif fila.estatus == "Calificado":
                     st.caption(f"Tu calificación: {'⭐' * int(fila.calificacion)}")
+                    valor_cobro = fila.get("cobro_correcto") if hasattr(fila, "get") else None
+                    if _tiene_valor(valor_cobro):
+                        st.caption("💰 Cobro correcto" if _es_si(valor_cobro) else "⚠️ Cobró más de lo indicado")
+                    valor_prof = fila.get("servicio_profesional") if hasattr(fila, "get") else None
+                    if _tiene_valor(valor_prof):
+                        st.caption("✅ Servicio limpio y profesional" if _es_si(valor_prof) else "❌ Servicio no fue limpio/profesional")

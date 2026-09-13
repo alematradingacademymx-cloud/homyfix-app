@@ -140,6 +140,7 @@ _COLS_SOLICITUDES_MAP = {
     "ClienteLat": "cliente_lat", "ClienteLng": "cliente_lng",
     "TecnicoLat": "tecnico_lat", "TecnicoLng": "tecnico_lng",
     "UbicacionTecnicoHora": "ubicacion_tecnico_hora",
+    "CobroCorrecto": "cobro_correcto", "ServicioProfesional": "servicio_profesional",
 }
 
 _COLUMNAS_SOLICITUDES = list(_COLS_SOLICITUDES_MAP.values())
@@ -250,8 +251,13 @@ def cerrar_puja(solicitud_id):
     return resp
 
 
-def calificar_solicitud(solicitud_id, calificacion):
-    _post("calificar_solicitud", solicitud_id=solicitud_id, calificacion=calificacion)
+def calificar_solicitud(solicitud_id, calificacion, cobro_correcto=None, servicio_profesional=None):
+    params = {"solicitud_id": solicitud_id, "calificacion": calificacion}
+    if cobro_correcto is not None:
+        params["cobro_correcto"] = cobro_correcto
+    if servicio_profesional is not None:
+        params["servicio_profesional"] = servicio_profesional
+    _post("calificar_solicitud", **params)
     _invalidar_cache()
 
 

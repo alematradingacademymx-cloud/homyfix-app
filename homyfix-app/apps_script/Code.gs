@@ -237,7 +237,7 @@ function registrarCalificacionTecnico(tecnicoId, valor, esRechazo) {
   }
 }
 
-const COLS_SOLICITUDES = ["SolicitudID", "ClienteID", "ClienteNombre", "Categoria", "Zona", "Descripcion", "Urgencia", "Estatus", "TecnicoID", "Costo", "Calificacion", "Creado", "CodigoSeguridad", "TipoCotizacion", "CostoVisita", "CostoReparacion", "Diagnostico", "FotoURL", "TecnicosRechazados", "ClienteLat", "ClienteLng", "TecnicoLat", "TecnicoLng", "UbicacionTecnicoHora"];
+const COLS_SOLICITUDES = ["SolicitudID", "ClienteID", "ClienteNombre", "Categoria", "Zona", "Descripcion", "Urgencia", "Estatus", "TecnicoID", "Costo", "Calificacion", "Creado", "CodigoSeguridad", "TipoCotizacion", "CostoVisita", "CostoReparacion", "Diagnostico", "FotoURL", "TecnicosRechazados", "ClienteLat", "ClienteLng", "TecnicoLat", "TecnicoLng", "UbicacionTecnicoHora", "CobroCorrecto", "ServicioProfesional"];
 
 function obtenerSolicitudes() {
   const hoja = crearPestanaSiNoExiste("Solicitudes", COLS_SOLICITUDES);
@@ -429,6 +429,12 @@ function calificarSolicitud(p) {
     registrarCalificacionTecnico(tecnicoId, Number(p.calificacion), false);
   }
   actualizarCelda(hoja, fila, "Calificacion", p.calificacion);
+  if (p.cobro_correcto !== undefined && p.cobro_correcto !== "") {
+    actualizarCelda(hoja, fila, "CobroCorrecto", p.cobro_correcto);
+  }
+  if (p.servicio_profesional !== undefined && p.servicio_profesional !== "") {
+    actualizarCelda(hoja, fila, "ServicioProfesional", p.servicio_profesional);
+  }
   actualizarCelda(hoja, fila, "Estatus", "Calificado");
   return {ok: true};
 }

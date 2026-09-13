@@ -109,7 +109,7 @@ def _semilla_solicitudes():
          "costo_reparacion": 450, "diagnostico": None, "foto_url": None, "tecnicos_rechazados": "",
          "calificacion": None, "creado": ahora - timedelta(days=2),
          "cliente_lat": None, "cliente_lng": None, "tecnico_lat": None, "tecnico_lng": None,
-         "ubicacion_tecnico_hora": None},
+         "ubicacion_tecnico_hora": None, "cobro_correcto": None, "servicio_profesional": None},
         {"solicitud_id": "S-1002", "cliente_id": "C-002", "cliente_nombre": "Juan Ramírez",
          "categoria": "Electricidad", "zona": "Centro",
          "descripcion": "Corto circuito en la cocina", "urgencia": "Para hoy",
@@ -118,7 +118,7 @@ def _semilla_solicitudes():
          "costo_reparacion": None, "diagnostico": None, "foto_url": None, "tecnicos_rechazados": "",
          "calificacion": None, "creado": ahora - timedelta(hours=3),
          "cliente_lat": None, "cliente_lng": None, "tecnico_lat": None, "tecnico_lng": None,
-         "ubicacion_tecnico_hora": None},
+         "ubicacion_tecnico_hora": None, "cobro_correcto": None, "servicio_profesional": None},
     ])
 
 
@@ -223,7 +223,8 @@ def crear_solicitud(cliente_id, cliente_nombre, categoria, zona, descripcion, ur
             "costo_reparacion": None, "diagnostico": None, "foto_url": None, "tecnicos_rechazados": "",
             "calificacion": None, "creado": datetime.now(),
             "cliente_lat": cliente_lat, "cliente_lng": cliente_lng,
-            "tecnico_lat": None, "tecnico_lng": None, "ubicacion_tecnico_hora": None}
+            "tecnico_lat": None, "tecnico_lng": None, "ubicacion_tecnico_hora": None,
+            "cobro_correcto": None, "servicio_profesional": None}
     st.session_state.solicitudes_df = pd.concat([df, pd.DataFrame([fila])], ignore_index=True)
     return nuevo_id
 
@@ -331,12 +332,16 @@ def cerrar_puja(solicitud_id):
     return {"ok": True, "tecnico_id": ganador.tecnico_id, "costo": ganador.costo}
 
 
-def calificar_solicitud(solicitud_id, calificacion):
+def calificar_solicitud(solicitud_id, calificacion, cobro_correcto=None, servicio_profesional=None):
     df = st.session_state.solicitudes_df
     fila = df[df.solicitud_id == solicitud_id].iloc[0]
     if fila.tecnico_id:
         _registrar_calificacion_tecnico(fila.tecnico_id, calificacion)
     df.loc[df.solicitud_id == solicitud_id, "calificacion"] = calificacion
+    if cobro_correcto is not None:
+        df.loc[df.solicitud_id == solicitud_id, "cobro_correcto"] = cobro_correcto
+    if servicio_profesional is not None:
+        df.loc[df.solicitud_id == solicitud_id, "servicio_profesional"] = servicio_profesional
     df.loc[df.solicitud_id == solicitud_id, "estatus"] = "Calificado"
 
 

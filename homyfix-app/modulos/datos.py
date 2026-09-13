@@ -122,8 +122,11 @@ def cerrar_puja(solicitud_id):
     return _backend().cerrar_puja(solicitud_id)
 
 
-def calificar_solicitud(solicitud_id, calificacion):
-    return _backend().calificar_solicitud(solicitud_id, calificacion)
+def calificar_solicitud(solicitud_id, calificacion, cobro_correcto=None, servicio_profesional=None):
+    return _backend().calificar_solicitud(
+        solicitud_id, calificacion,
+        cobro_correcto=cobro_correcto, servicio_profesional=servicio_profesional,
+    )
 
 
 def enviar_solicitud_registro(tipo, nombre, correo, telefono, direccion=None, edad=None,
