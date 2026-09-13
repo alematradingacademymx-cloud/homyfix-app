@@ -1,7 +1,7 @@
 import streamlit as st
 
 from modulos.config import (
-    inicializar_session_state, iniciar_sesion, cerrar_sesion,
+    inicializar_session_state, restaurar_sesion, iniciar_sesion, cerrar_sesion,
     ADMIN_OPERATIVO, ADMIN_SOCIO, TECNICO, CLIENTE,
 )
 from modulos.estilos import aplicar_estilos, logo, lema
@@ -13,6 +13,7 @@ st.set_page_config(page_title="Homyfix", page_icon="🧰", layout="wide")
 
 inicializar_session_state()
 datos.inicializar_datos()
+restaurar_sesion()
 aplicar_estilos()
 
 

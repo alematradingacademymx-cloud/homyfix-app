@@ -49,7 +49,33 @@ def autenticar(usuario, password):
         "nombre": resp["nombre"],
         "tecnico_id": resp.get("tecnico_id") or None,
         "cliente_id": resp.get("cliente_id") or None,
+        "token": resp.get("token"),
     }
+
+
+def sesion_por_token(token):
+    """Restaura una sesión a partir del token guardado en la URL (ver
+    modulos/config.py::restaurar_sesion) — así un refresh de la página, o
+    que Streamlit Cloud reinicie el servidor tras un redeploy, no te saca
+    de la sesión."""
+    if not token:
+        return None
+    resp = _post("sesion_por_token", token=token)
+    if not resp.get("ok"):
+        return None
+    return {
+        "usuario": resp.get("usuario"),
+        "rol": resp["rol"],
+        "nombre": resp["nombre"],
+        "tecnico_id": resp.get("tecnico_id") or None,
+        "cliente_id": resp.get("cliente_id") or None,
+    }
+
+
+def cerrar_sesion(token):
+    if not token:
+        return
+    _post("cerrar_sesion", token=token)
 
 
 # ---------- Técnicos ----------

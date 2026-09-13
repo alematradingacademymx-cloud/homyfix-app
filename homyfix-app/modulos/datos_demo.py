@@ -52,12 +52,33 @@ def autenticar(usuario, password):
     if fila.empty or str(fila.iloc[0].password) != str(password):
         return None
     f = fila.iloc[0]
+    if "sesiones_demo" not in st.session_state:
+        st.session_state.sesiones_demo = {}
+    token = f"demo-{random.randint(0, 10**9):09d}"
+    st.session_state.sesiones_demo[token] = {
+        "usuario": f.usuario, "rol": f.rol, "nombre": f.nombre,
+        "tecnico_id": f.tecnico_id or None, "cliente_id": f.cliente_id or None,
+    }
     return {
         "rol": f.rol,
         "nombre": f.nombre,
         "tecnico_id": f.tecnico_id or None,
         "cliente_id": f.cliente_id or None,
+        "token": token,
     }
+
+
+def sesion_por_token(token):
+    sesiones = st.session_state.get("sesiones_demo", {})
+    datos_sesion = sesiones.get(token)
+    if not datos_sesion:
+        return None
+    return dict(datos_sesion)
+
+
+def cerrar_sesion(token):
+    sesiones = st.session_state.get("sesiones_demo", {})
+    sesiones.pop(token, None)
 
 
 def _semilla_tecnicos():

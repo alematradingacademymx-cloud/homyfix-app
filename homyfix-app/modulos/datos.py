@@ -38,6 +38,14 @@ def autenticar(usuario, password):
     return _backend().autenticar(usuario, password)
 
 
+def sesion_por_token(token):
+    return _backend().sesion_por_token(token)
+
+
+def cerrar_sesion(token):
+    return _backend().cerrar_sesion(token)
+
+
 def obtener_tecnicos():
     return _backend().obtener_tecnicos()
 

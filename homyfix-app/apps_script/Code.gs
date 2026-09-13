@@ -20,6 +20,8 @@ function doPost(e) {
     }
     switch (p.action) {
       case "login": return respuesta(login(p));
+      case "sesion_por_token": return respuesta(sesionPorToken(p));
+      case "cerrar_sesion": return respuesta(cerrarSesion(p));
       case "obtener_tecnicos": return respuesta({ok: true, datos: obtenerTecnicos()});
       case "agregar_tecnico": return respuesta(agregarTecnico(p));
       case "actualizar_estatus_tecnico": return respuesta(actualizarEstatusTecnico(p));
@@ -129,6 +131,19 @@ function generarCodigoAcceso() {
   return codigo;
 }
 
+const COLS_SESIONES = ["Token", "Usuario", "Rol", "Nombre", "TecnicoID", "ClienteID", "Creado"];
+
+function generarToken() {
+  return Utilities.getUuid().replace(/-/g, "") + Utilities.getUuid().replace(/-/g, "");
+}
+
+function crearSesion(usuario, rol, nombre, tecnicoId, clienteId) {
+  const hoja = crearPestanaSiNoExiste("Sesiones", COLS_SESIONES);
+  const token = generarToken();
+  hoja.appendRow([token, usuario, rol, nombre, tecnicoId || "", clienteId || "", new Date()]);
+  return token;
+}
+
 function login(p) {
   const hoja = crearPestanaSiNoExiste("Usuarios", ["Usuario", "Password", "Rol", "Nombre", "TecnicoID", "ClienteID"]);
   const filas = filasComoObjetos(hoja);
@@ -137,13 +152,43 @@ function login(p) {
   if (!encontrado || String(encontrado.Password) !== String(p.password)) {
     return {ok: false, error: "usuario o contraseña incorrectos"};
   }
+  const token = crearSesion(encontrado.Usuario, encontrado.Rol, encontrado.Nombre, encontrado.TecnicoID, encontrado.ClienteID);
   return {
     ok: true,
     rol: encontrado.Rol,
     nombre: encontrado.Nombre,
     tecnico_id: encontrado.TecnicoID || null,
     cliente_id: encontrado.ClienteID || null,
+    token: token,
   };
+}
+
+// Restaura una sesión a partir del token que Streamlit guarda en la URL —
+// así un refresh de la página (o que Streamlit Cloud reinicie el servidor
+// tras un redeploy) no manda al usuario de vuelta al login.
+function sesionPorToken(p) {
+  const hoja = crearPestanaSiNoExiste("Sesiones", COLS_SESIONES);
+  const fila = encontrarFila(hoja, "Token", p.token);
+  if (fila === -1) return {ok: false, error: "sesión no encontrada"};
+  const valores = hoja.getDataRange().getValues();
+  const encabezados = valores[0];
+  const datosFila = {};
+  encabezados.forEach((h, i) => datosFila[h] = valores[fila - 1][i]);
+  return {
+    ok: true,
+    usuario: datosFila.Usuario,
+    rol: datosFila.Rol,
+    nombre: datosFila.Nombre,
+    tecnico_id: datosFila.TecnicoID || null,
+    cliente_id: datosFila.ClienteID || null,
+  };
+}
+
+function cerrarSesion(p) {
+  const hoja = crearPestanaSiNoExiste("Sesiones", COLS_SESIONES);
+  const fila = encontrarFila(hoja, "Token", p.token);
+  if (fila !== -1) hoja.deleteRow(fila);
+  return {ok: true};
 }
 
 const COLS_TECNICOS = ["TecnicoID", "Nombre", "Especialidad", "Zona", "Telefono", "Estatus", "MembresiaAlCorriente", "CalificacionProm", "NumCalificaciones", "Rechazos", "FotoPerfilURL"];
