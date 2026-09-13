@@ -12,16 +12,11 @@ def pagina():
     tab_nueva, tab_mis = st.tabs(["🛠️ Nueva solicitud", "📋 Mis solicitudes"])
 
     with tab_nueva:
-        geo.boton_ubicacion(
-            "📍 Compartir mi ubicación exacta",
-            key="cliente_nueva_solicitud",
-            ayuda="Opcional pero recomendado: así el técnico ve el tiempo estimado de llegada real hacia tu domicilio.",
-        )
-        ubicacion = geo.leer_ubicacion_de_url("cliente_nueva_solicitud")
+        st.caption("Opcional pero recomendado: comparte tu ubicación exacta así el técnico ve el tiempo estimado de llegada real hacia tu domicilio.")
+        ubicacion = geo.obtener_ubicacion_navegador()
         if ubicacion:
             st.session_state["nueva_solicitud_lat"] = ubicacion[0]
             st.session_state["nueva_solicitud_lng"] = ubicacion[1]
-            st.rerun()
         if st.session_state.get("nueva_solicitud_lat"):
             st.success("📍 Ubicación compartida — se guardará junto con tu solicitud.")
 

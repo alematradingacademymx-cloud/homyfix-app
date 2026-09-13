@@ -58,6 +58,25 @@ def pagina():
         if mias.empty:
             st.info("Aún no tienes trabajos asignados.")
 
+        # El widget de ubicación del navegador solo se puede mostrar UNA vez
+        # por corrida de la página (ver geo.obtener_ubicacion_navegador), así
+        # que si tienes varios trabajos activos primero eliges para cuál con
+        # un botón normal, y aquí arriba se muestra el widget de verdad solo
+        # para ese trabajo elegido.
+        solicitud_para_ubicacion = st.session_state.get("_pedir_ubicacion_solicitud")
+        if solicitud_para_ubicacion:
+            with st.container(border=True):
+                st.markdown(f"**Comparte tu ubicación para {solicitud_para_ubicacion}**")
+                nueva_ubic = geo.obtener_ubicacion_navegador()
+                if nueva_ubic:
+                    datos.actualizar_ubicacion_tecnico(solicitud_para_ubicacion, nueva_ubic[0], nueva_ubic[1])
+                    st.session_state["_pedir_ubicacion_solicitud"] = None
+                    st.success("Ubicación actualizada, el cliente ya la puede ver.")
+                    st.rerun()
+                if st.button("Cancelar", key="cancelar_pedir_ubicacion"):
+                    st.session_state["_pedir_ubicacion_solicitud"] = None
+                    st.rerun()
+
         for _, fila in mias.sort_values("creado", ascending=False).iterrows():
             with st.container(border=True):
                 st.markdown(f"**{fila.solicitud_id}** · {fila.categoria} · {fila.zona} &nbsp;&nbsp;{badge_estatus(fila.estatus)}", unsafe_allow_html=True)
@@ -71,16 +90,14 @@ def pagina():
                     hora = fila.get("ubicacion_tecnico_hora")
                     if hora and not pd.isna(hora):
                         st.caption(f"📍 Última ubicación compartida: {hora}")
-                    geo.boton_ubicacion(
-                        "📍 Compartir mi ubicación (voy en camino)",
-                        key=f"tec_ubicacion_{fila.solicitud_id}",
-                        ayuda="Actualiza tu posición para que el cliente vea el mapa y el tiempo estimado de llegada.",
-                    )
-                    nueva_ubic = geo.leer_ubicacion_de_url(f"tec_ubicacion_{fila.solicitud_id}")
-                    if nueva_ubic:
-                        datos.actualizar_ubicacion_tecnico(fila.solicitud_id, nueva_ubic[0], nueva_ubic[1])
-                        st.success("Ubicación actualizada, el cliente ya la puede ver.")
-                        st.rerun()
+                    if solicitud_para_ubicacion != fila.solicitud_id:
+                        if st.button(
+                            "📍 Compartir mi ubicación (voy en camino)",
+                            key=f"pedir_geo_{fila.solicitud_id}",
+                            use_container_width=True,
+                        ):
+                            st.session_state["_pedir_ubicacion_solicitud"] = fila.solicitud_id
+                            st.rerun()
 
                 if fila.estatus == "Asignado":
                     modo = st.radio(

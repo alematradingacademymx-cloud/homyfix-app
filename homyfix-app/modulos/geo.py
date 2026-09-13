@@ -8,72 +8,47 @@ ve un mapa con su domicilio, la última ubicación conocida del técnico y un
 tiempo estimado de llegada calculado con OpenRouteService (gratis hasta 2,000
 rutas/día — de sobra para la fase beta).
 
-Streamlit no tiene una API nativa para pedir la ubicación del navegador, así
-que usamos un truco simple y confiable: un botón HTML que llama a
-`navigator.geolocation`, mete lat/lng como query params en la URL de la app
-y recarga la página — del lado de Python simplemente leemos esos query
-params con `leer_ubicacion_de_url`.
+NOTA IMPORTANTE (por qué usamos `streamlit-geolocation` y no un botón HTML
+casero): la primera versión de esto usaba un botón HTML propio (via
+`st.components.v1.html`) que llamaba a `navigator.geolocation` y luego hacía
+`window.parent.location.href = ...` para "avisarle" a la app con query
+params. Eso se quedaba congelado en "Obteniendo tu ubicación..." para
+siempre: Streamlit mete ese HTML en un iframe con sandbox, y ese sandbox no
+deja que el contenido de adentro navegue/redirija la página de arriba — el
+navegador sí pedía permiso y sí obtenía la ubicación, pero la forma de
+regresarla a Python quedaba bloqueada en silencio. `streamlit-geolocation`
+es un componente de verdad de Streamlit (usa el mecanismo oficial para que
+JS le regrese un valor a Python) y no depende de navegar la página, así que
+no tiene ese problema.
 """
 
 import requests
 import streamlit as st
-import streamlit.components.v1 as components
 
 
-def boton_ubicacion(etiqueta: str, key: str, ayuda: str = ""):
-    """Botón que pide la ubicación del navegador y la manda a la app vía
-    query params (?geo_key=<key>&geo_lat=..&geo_lng=..). Úsalo junto con
-    leer_ubicacion_de_url(key) para recogerla."""
-    if ayuda:
-        st.caption(ayuda)
-    html = f"""
-    <div>
-      <button id="btn_{key}" onclick="homyfixObtenerUbicacion_{key}()" style="
-          background-color:#FF9900;color:#FFFFFF;border:none;border-radius:8px;
-          padding:0.55rem 1rem;font-weight:700;font-size:0.95rem;width:100%;
-          cursor:pointer;font-family:inherit;">
-        {etiqueta}
-      </button>
-      <p id="estado_{key}" style="color:#8a94a6;font-size:0.8rem;margin-top:4px;"></p>
-    </div>
-    <script>
-    function homyfixObtenerUbicacion_{key}() {{
-        var estado = document.getElementById("estado_{key}");
-        estado.innerText = "Obteniendo tu ubicación...";
-        if (!navigator.geolocation) {{
-            estado.innerText = "Tu navegador no soporta geolocalización.";
-            return;
-        }}
-        navigator.geolocation.getCurrentPosition(function(pos) {{
-            var lat = pos.coords.latitude;
-            var lng = pos.coords.longitude;
-            var url = new URL(window.parent.location.href);
-            url.searchParams.set("geo_key", "{key}");
-            url.searchParams.set("geo_lat", lat);
-            url.searchParams.set("geo_lng", lng);
-            window.parent.location.href = url.toString();
-        }}, function(err) {{
-            estado.innerText = "No se pudo obtener tu ubicación: " + err.message;
-        }}, {{enableHighAccuracy: true, timeout: 10000}});
-    }}
-    </script>
-    """
-    components.html(html, height=80)
+def obtener_ubicacion_navegador():
+    """Muestra el botón de geolocalización del navegador (componente
+    streamlit-geolocation, ver requirements.txt) y regresa (lat, lng) en
+    cuanto el usuario la comparte, o None si todavía no lo ha hecho o si el
+    paquete no está instalado.
 
-
-def leer_ubicacion_de_url(key: str):
-    """Si la URL trae ?geo_key=<key>&geo_lat=..&geo_lng=.. regresa (lat, lng)
-    como floats y limpia los query params. Si no, regresa None."""
-    qp = st.query_params
-    if qp.get("geo_key") == key and "geo_lat" in qp and "geo_lng" in qp:
-        try:
-            lat = float(qp["geo_lat"])
-            lng = float(qp["geo_lng"])
-        except (TypeError, ValueError):
-            st.query_params.clear()
-            return None
-        st.query_params.clear()
-        return (lat, lng)
+    IMPORTANTE: este componente solo se puede mostrar UNA vez por corrida de
+    la página (su key interno viene fijo dentro del paquete) — si necesitas
+    pedir ubicación en más de un lugar de la misma pantalla (p. ej. el
+    técnico con varios trabajos activos), pide primero con un botón normal
+    cuál ubicación se va a compartir y solo entonces llama a esta función
+    una sola vez, fuera de cualquier `for`."""
+    try:
+        from streamlit_geolocation import streamlit_geolocation
+    except ImportError:
+        st.error(
+            "Falta instalar `streamlit-geolocation` (revisa requirements.txt) "
+            "para poder compartir tu ubicación."
+        )
+        return None
+    ubicacion = streamlit_geolocation()
+    if ubicacion and ubicacion.get("latitude") is not None and ubicacion.get("longitude") is not None:
+        return (ubicacion["latitude"], ubicacion["longitude"])
     return None
 
 
