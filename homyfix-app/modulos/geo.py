@@ -93,7 +93,7 @@ def calcular_eta(origen_lat, origen_lng, destino_lat, destino_lng):
     if not api_key:
         return None
     try:
-        url = "https://api.openrouteservice.org/v2/directions/driving-car"
+        url = "https://api.heigit.org/openrouteservice/v2/directions/driving-car"
         headers = {"Authorization": api_key}
         params = {
             "start": f"{origen_lng},{origen_lat}",
