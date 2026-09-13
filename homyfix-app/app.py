@@ -24,7 +24,7 @@ def pantalla_login():
         with st.form("login"):
             usuario = st.text_input("Usuario")
             password = st.text_input("Contraseña", type="password")
-            enviado = st.form_submit_button("Entrar", use_container_width=True)
+            enviado = st.form_submit_button("Entrar", use_container_width=True, key="btn_entrar")
             if enviado:
                 if iniciar_sesion(usuario, password):
                     st.rerun()
@@ -40,7 +40,7 @@ def pantalla_login():
         if c2.button("🏠 Quiero ser cliente", use_container_width=True):
             st.session_state.vista_publica = "registro_cliente"
             st.rerun()
-        if st.button("🔑 Ya tengo un código de acceso", use_container_width=True):
+        if st.button("🔑 Ya tengo un código de acceso", use_container_width=True, key="btn_codigo_acceso"):
             st.session_state.vista_publica = "canjear"
             st.rerun()
 

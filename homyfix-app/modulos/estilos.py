@@ -96,6 +96,16 @@ header[data-testid="stHeader"] {{background: transparent;}}
     color: #7A5200 !important;
 }}
 
+/* Botones de login (Entrar / Ya tengo un código) en el azul del logo, no naranja */
+.st-key-btn_entrar button, .st-key-btn_codigo_acceso button {{
+    background-color: {AZUL_PRIMARIO} !important;
+    color: #FFFFFF !important;
+}}
+.st-key-btn_entrar button:hover, .st-key-btn_codigo_acceso button:hover {{
+    background-color: {AZUL_SECUNDARIO} !important;
+    color: #FFFFFF !important;
+}}
+
 /* Cajas / paneles con borde: relleno azul, letras blancas, para que resalten */
 [data-testid="stVerticalBlockBorderWrapper"] {{
     background: {AZUL_SECUNDARIO} !important;
