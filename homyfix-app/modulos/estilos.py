@@ -1,10 +1,17 @@
 """Estilos compartidos de la app (siguiendo el mismo patrón del portal educativo)."""
 
+import base64
 from pathlib import Path
 
 import streamlit as st
 
 _LOGO_PATH = Path(__file__).resolve().parent.parent / "assets" / "logo.png"
+
+
+def _logo_base64() -> str:
+    if not _LOGO_PATH.exists():
+        return ""
+    return base64.b64encode(_LOGO_PATH.read_bytes()).decode("utf-8")
 
 # Paleta de marca Homyfix
 AZUL_PRIMARIO = "#13499C"   # azul del logo — títulos, marca, sidebar
@@ -28,6 +35,13 @@ header[data-testid="stHeader"] {{background: transparent;}}
 .sub-title {{
     color: #5B6B82;
     margin-top: 0;
+}}
+.homyfix-lema {{
+    text-align: center;
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: {NARANJA};
+    margin: 0.4rem 0 1.2rem 0;
 }}
 .app-card {{
     background: #F5F6FA;
@@ -91,15 +105,29 @@ def encabezado(titulo: str, subtitulo: str = ""):
 
 
 def logo(ancho: int = 160, centrado: bool = True):
-    """Muestra el logo de Homyfix. Usar en el login (grande) y en el sidebar (chico)."""
-    if not _LOGO_PATH.exists():
+    """Muestra el logo de Homyfix. Usar en el login (grande, centrado) y en el sidebar (chico)."""
+    b64 = _logo_base64()
+    if not b64:
         return
     if centrado:
-        _, col, _ = st.columns([1, 1, 1])
-        with col:
-            st.image(str(_LOGO_PATH), width=ancho)
+        st.markdown(
+            f"<div style='text-align:center;'>"
+            f"<img src='data:image/png;base64,{b64}' width='{ancho}'/>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
     else:
-        st.image(str(_LOGO_PATH), width=ancho)
+        st.markdown(
+            f"<div class='homyfix-logo-sidebar'>"
+            f"<img src='data:image/png;base64,{b64}' width='{ancho}'/>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+
+
+def lema(texto: str = "Tu hogar en manos seguras"):
+    """Leyenda naranja, grande, con la misma tipografía del título — para debajo del logo."""
+    st.markdown(f"<p class='homyfix-lema'>{texto}</p>", unsafe_allow_html=True)
 
 
 _BADGE_CLASE = {
