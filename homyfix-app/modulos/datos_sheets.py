@@ -251,6 +251,18 @@ def cerrar_puja(solicitud_id):
     return resp
 
 
+def guardar_borrador_calificacion(solicitud_id, calificacion=None, cobro_correcto=None, servicio_profesional=None):
+    params = {"solicitud_id": solicitud_id}
+    if calificacion is not None:
+        params["calificacion"] = calificacion
+    if cobro_correcto is not None:
+        params["cobro_correcto"] = cobro_correcto
+    if servicio_profesional is not None:
+        params["servicio_profesional"] = servicio_profesional
+    _post("guardar_borrador_calificacion", **params)
+    _invalidar_cache()
+
+
 def calificar_solicitud(solicitud_id, calificacion, cobro_correcto=None, servicio_profesional=None):
     params = {"solicitud_id": solicitud_id, "calificacion": calificacion}
     if cobro_correcto is not None:

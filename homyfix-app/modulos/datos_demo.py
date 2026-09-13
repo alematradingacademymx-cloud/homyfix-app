@@ -332,6 +332,19 @@ def cerrar_puja(solicitud_id):
     return {"ok": True, "tecnico_id": ganador.tecnico_id, "costo": ganador.costo}
 
 
+def guardar_borrador_calificacion(solicitud_id, calificacion=None, cobro_correcto=None, servicio_profesional=None):
+    """Guarda de inmediato lo que el cliente va seleccionando en la pantalla de
+    calificación (antes de darle 'Enviar'), para que no se pierda si la página
+    se recarga o la sesión se reinicia a la mitad."""
+    df = st.session_state.solicitudes_df
+    if calificacion is not None:
+        df.loc[df.solicitud_id == solicitud_id, "calificacion"] = calificacion
+    if cobro_correcto is not None:
+        df.loc[df.solicitud_id == solicitud_id, "cobro_correcto"] = cobro_correcto
+    if servicio_profesional is not None:
+        df.loc[df.solicitud_id == solicitud_id, "servicio_profesional"] = servicio_profesional
+
+
 def calificar_solicitud(solicitud_id, calificacion, cobro_correcto=None, servicio_profesional=None):
     df = st.session_state.solicitudes_df
     fila = df[df.solicitud_id == solicitud_id].iloc[0]

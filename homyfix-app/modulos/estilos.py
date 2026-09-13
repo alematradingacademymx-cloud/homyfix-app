@@ -98,6 +98,20 @@ header[data-testid="stHeader"] {{background: transparent;}}
     color: #7A5200 !important;
 }}
 
+/* Botones "primary" (usados para marcar una opción como seleccionada, p. ej.
+   la calificación o las confirmaciones de cobro/limpieza) en azul, para que
+   se distingan claramente de los botones normales (naranja). */
+.stButton > button[kind="primary"],
+.stButton > button[data-testid="baseButton-primary"] {{
+    background-color: {AZUL_PRIMARIO} !important;
+    color: #FFFFFF !important;
+}}
+.stButton > button[kind="primary"]:hover,
+.stButton > button[data-testid="baseButton-primary"]:hover {{
+    background-color: {AZUL_SECUNDARIO} !important;
+    color: #FFFFFF !important;
+}}
+
 /* Botones de login (Entrar / Ya tengo un código) en el azul del logo, no naranja */
 .st-key-btn_entrar button, .st-key-btn_codigo_acceso button {{
     background-color: {AZUL_PRIMARIO} !important;

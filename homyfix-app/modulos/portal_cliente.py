@@ -95,8 +95,15 @@ def pagina():
                     etiqueta = "¿Cómo calificarías la visita y la compostura?" if fila.tipo_cotizacion == "Visita" else "¿Cómo calificarías la compostura?"
                     st.markdown(f"**{etiqueta}**")
 
+                    # Los valores por defecto se toman de lo que ya se haya guardado
+                    # como borrador (ver guardar_borrador_calificacion): así, si la
+                    # página se recarga o la sesión se reinicia a la mitad, el
+                    # cliente no pierde lo que ya había seleccionado.
                     key_cal = f"cal_{fila.solicitud_id}"
-                    st.session_state.setdefault(key_cal, 5)
+                    if key_cal not in st.session_state:
+                        valor = fila.get("calificacion") if hasattr(fila, "get") else None
+                        st.session_state[key_cal] = int(valor) if _tiene_valor(valor) else 5
+
                     cols_num = st.columns(5)
                     for i, col in enumerate(cols_num, start=1):
                         if col.button(
@@ -104,10 +111,13 @@ def pagina():
                             type="primary" if st.session_state[key_cal] == i else "secondary",
                         ):
                             st.session_state[key_cal] = i
+                            datos.guardar_borrador_calificacion(fila.solicitud_id, calificacion=i)
                             st.rerun()
 
                     key_cobro = f"cobro_{fila.solicitud_id}"
-                    st.session_state.setdefault(key_cobro, "correcto")
+                    if key_cobro not in st.session_state:
+                        valor = fila.get("cobro_correcto") if hasattr(fila, "get") else None
+                        st.session_state[key_cobro] = "mas" if _tiene_valor(valor) and not _es_si(valor) else "correcto"
                     st.caption("¿El cobro fue el indicado por la app?")
                     c1, c2 = st.columns(2)
                     if c1.button(
@@ -115,16 +125,20 @@ def pagina():
                         type="primary" if st.session_state[key_cobro] == "correcto" else "secondary",
                     ):
                         st.session_state[key_cobro] = "correcto"
+                        datos.guardar_borrador_calificacion(fila.solicitud_id, cobro_correcto=True)
                         st.rerun()
                     if c2.button(
                         "⚠️ Cobró más de lo indicado", key=f"{key_cobro}_mas", use_container_width=True,
                         type="primary" if st.session_state[key_cobro] == "mas" else "secondary",
                     ):
                         st.session_state[key_cobro] = "mas"
+                        datos.guardar_borrador_calificacion(fila.solicitud_id, cobro_correcto=False)
                         st.rerun()
 
                     key_prof = f"prof_{fila.solicitud_id}"
-                    st.session_state.setdefault(key_prof, "si")
+                    if key_prof not in st.session_state:
+                        valor = fila.get("servicio_profesional") if hasattr(fila, "get") else None
+                        st.session_state[key_prof] = "no" if _tiene_valor(valor) and not _es_si(valor) else "si"
                     st.caption("¿El servicio fue limpio y profesional?")
                     c3, c4 = st.columns(2)
                     if c3.button(
@@ -132,12 +146,14 @@ def pagina():
                         type="primary" if st.session_state[key_prof] == "si" else "secondary",
                     ):
                         st.session_state[key_prof] = "si"
+                        datos.guardar_borrador_calificacion(fila.solicitud_id, servicio_profesional=True)
                         st.rerun()
                     if c4.button(
                         "❌ No", key=f"{key_prof}_no", use_container_width=True,
                         type="primary" if st.session_state[key_prof] == "no" else "secondary",
                     ):
                         st.session_state[key_prof] = "no"
+                        datos.guardar_borrador_calificacion(fila.solicitud_id, servicio_profesional=False)
                         st.rerun()
 
                     if st.button("Enviar calificación", key=f"btn_{key_cal}", use_container_width=True):

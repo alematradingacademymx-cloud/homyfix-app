@@ -40,6 +40,7 @@ function doPost(e) {
       case "obtener_pujas": return respuesta({ok: true, datos: obtenerPujas(p)});
       case "ofertar_puja": return respuesta(ofertarPuja(p));
       case "cerrar_puja": return respuesta(cerrarPuja(p));
+      case "guardar_borrador_calificacion": return respuesta(guardarBorradorCalificacion(p));
       case "calificar_solicitud": return respuesta(calificarSolicitud(p));
       case "enviar_solicitud_registro": return respuesta(enviarSolicitudRegistro(p));
       case "obtener_solicitudes_registro": return respuesta({ok: true, datos: obtenerSolicitudesRegistro(p)});
@@ -418,6 +419,25 @@ function cerrarPuja(p) {
     }
   }
   return {ok: true, tecnico_id: ganador.TecnicoID, costo: ganador.Costo};
+}
+
+// Guarda de inmediato lo que el cliente va seleccionando en la pantalla de
+// calificación (antes de darle "Enviar"), sin tocar el Estatus ni el
+// promedio del técnico — solo calificarSolicitud() hace eso al final.
+function guardarBorradorCalificacion(p) {
+  const hoja = crearPestanaSiNoExiste("Solicitudes", COLS_SOLICITUDES);
+  const fila = encontrarFila(hoja, "SolicitudID", p.solicitud_id);
+  if (fila === -1) return {ok: false, error: "solicitud no encontrada"};
+  if (p.calificacion !== undefined && p.calificacion !== "") {
+    actualizarCelda(hoja, fila, "Calificacion", p.calificacion);
+  }
+  if (p.cobro_correcto !== undefined && p.cobro_correcto !== "") {
+    actualizarCelda(hoja, fila, "CobroCorrecto", p.cobro_correcto);
+  }
+  if (p.servicio_profesional !== undefined && p.servicio_profesional !== "") {
+    actualizarCelda(hoja, fila, "ServicioProfesional", p.servicio_profesional);
+  }
+  return {ok: true};
 }
 
 function calificarSolicitud(p) {

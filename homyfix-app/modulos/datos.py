@@ -122,6 +122,13 @@ def cerrar_puja(solicitud_id):
     return _backend().cerrar_puja(solicitud_id)
 
 
+def guardar_borrador_calificacion(solicitud_id, calificacion=None, cobro_correcto=None, servicio_profesional=None):
+    return _backend().guardar_borrador_calificacion(
+        solicitud_id, calificacion=calificacion,
+        cobro_correcto=cobro_correcto, servicio_profesional=servicio_profesional,
+    )
+
+
 def calificar_solicitud(solicitud_id, calificacion, cobro_correcto=None, servicio_profesional=None):
     return _backend().calificar_solicitud(
         solicitud_id, calificacion,
