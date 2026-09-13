@@ -13,8 +13,16 @@ def pagina():
     if not registros_pendientes.empty:
         etiqueta_registros = f"📥 Registros ({len(registros_pendientes)})"
 
+    tecnicos_df = datos.obtener_tecnicos()
+    n_tecnicos_pendientes = 0
+    if not tecnicos_df.empty:
+        n_tecnicos_pendientes = int(
+            tecnicos_df.estatus.astype(str).str.strip().str.lower().str.startswith("pendiente").sum()
+        )
+    etiqueta_tecnicos = "🧰 Técnicos" if not n_tecnicos_pendientes else f"🧰 Técnicos (⚠️ {n_tecnicos_pendientes})"
+
     tab_solicitudes, tab_puja, tab_tecnicos, tab_registros = st.tabs(
-        ["📋 Solicitudes", "💰 Pujas activas", "🧰 Técnicos", etiqueta_registros]
+        ["📋 Solicitudes", "💰 Pujas activas", etiqueta_tecnicos, etiqueta_registros]
     )
 
     with tab_solicitudes:
@@ -155,6 +163,25 @@ def _tab_puja():
 
 def _tab_tecnicos():
     df = datos.obtener_tecnicos()
+
+    pendientes = df[df.estatus.astype(str).str.strip().str.lower().str.startswith("pendiente")] if not df.empty else df
+    if not pendientes.empty:
+        st.markdown(
+            f"### ⚠️ Pendientes de validar ({len(pendientes)})"
+        )
+        for _, fila in pendientes.iterrows():
+            with st.container(border=True):
+                c1, c2, c3 = st.columns([3, 1, 1])
+                c1.markdown(f"**{fila.nombre}** · {fila.especialidad} · {fila.zona}")
+                if c2.button("✅ Aprobar", key=f"aprobar_{fila.tecnico_id}", use_container_width=True):
+                    datos.actualizar_estatus_tecnico(fila.tecnico_id, "Activo")
+                    st.rerun()
+                if c3.button("❌ Rechazar", key=f"rechazar_{fila.tecnico_id}", use_container_width=True):
+                    datos.actualizar_estatus_tecnico(fila.tecnico_id, "Suspendido")
+                    st.rerun()
+        st.divider()
+
+    st.subheader("Todos los técnicos")
     st.dataframe(
         df[["tecnico_id", "nombre", "especialidad", "zona", "telefono", "estatus", "membresia_al_corriente", "calificacion_prom"]],
         use_container_width=True, hide_index=True,
@@ -169,19 +196,6 @@ def _tab_tecnicos():
             etiqueta = "Marcar vencida" if al_corriente else "Marcar al corriente"
             if c2.button(etiqueta, key=f"membresia_{fila.tecnico_id}", use_container_width=True):
                 datos.actualizar_membresia_tecnico(fila.tecnico_id, not al_corriente)
-                st.rerun()
-
-    pendientes = df[df.estatus == "Pendiente de validación"]
-    if not pendientes.empty:
-        st.subheader("Pendientes de validar")
-        for _, fila in pendientes.iterrows():
-            c1, c2, c3 = st.columns([3, 1, 1])
-            c1.write(f"**{fila.nombre}** · {fila.especialidad} · {fila.zona}")
-            if c2.button("Aprobar", key=f"aprobar_{fila.tecnico_id}"):
-                datos.actualizar_estatus_tecnico(fila.tecnico_id, "Activo")
-                st.rerun()
-            if c3.button("Rechazar", key=f"rechazar_{fila.tecnico_id}"):
-                datos.actualizar_estatus_tecnico(fila.tecnico_id, "Suspendido")
                 st.rerun()
 
     st.divider()
