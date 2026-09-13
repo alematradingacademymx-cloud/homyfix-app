@@ -2,44 +2,76 @@
 
 import streamlit as st
 
-CSS = """
-<style>
-header[data-testid="stHeader"] {background: transparent;}
-#MainMenu, footer, .stAppDeployButton {visibility: hidden;}
+# Paleta de marca Homyfix
+AZUL_PRIMARIO = "#13499C"   # azul del logo — títulos, marca, sidebar
+AZUL_SECUNDARIO = "#2A3C96"  # azul de apoyo — degradados, hover
+NARANJA = "#FF9900"          # acento del logo (llave) — botones de acción
+VERDE = "#B9E25E"            # estados positivos / aprobado
+MORADO_OSCURO = "#751083"    # panel admin / socio — distinción de rol
+MORADO_CLARO = "#601C88"     # apoyo del morado — hover, degradados
 
-.main-title {
+CSS = f"""
+<style>
+header[data-testid="stHeader"] {{background: transparent;}}
+#MainMenu, footer, .stAppDeployButton {{visibility: hidden;}}
+
+.main-title {{
     font-size: 1.8rem;
     font-weight: 800;
-    color: #0B1F3A;
+    color: {AZUL_PRIMARIO};
     margin-bottom: 0;
-}
-.sub-title {
+}}
+.sub-title {{
     color: #5B6B82;
     margin-top: 0;
-}
-.app-card {
+}}
+.app-card {{
     background: #F5F6FA;
     border-radius: 14px;
     padding: 1rem 1.2rem;
     border: 1px solid #E7EAF0;
-}
-.badge {
+}}
+.badge {{
     display: inline-block;
     padding: 2px 10px;
     border-radius: 999px;
     font-size: 0.78rem;
     font-weight: 600;
-}
-.badge-pendiente {background:#FFF1E0; color:#B5610A;}
-.badge-asignado {background:#E4EEFF; color:#1D4ED8;}
-.badge-visita {background:#EDE4FF; color:#5B21B6;}
-.badge-cotizado {background:#FFF9C4; color:#8A6D00;}
-.badge-puja {background:#FFE4F0; color:#BE185D;}
-.badge-aceptado {background:#DCFCE7; color:#15803D;}
-.badge-encurso {background:#FDE8FF; color:#A21CAF;}
-.badge-completado {background:#E4FFEE; color:#0F8A3E;}
-.badge-calificado {background:#EAF7EA; color:#1C7C33;}
-.badge-cancelado {background:#FFE4E4; color:#B91C1C;}
+}}
+.badge-pendiente {{background:#FFF1E0; color:#B5610A;}}
+.badge-asignado {{background:#E4EEFF; color:{AZUL_PRIMARIO};}}
+.badge-visita {{background:#EDE4FF; color:{MORADO_CLARO};}}
+.badge-cotizado {{background:#FFF3D6; color:#8A5A00;}}
+.badge-puja {{background:#FFE4F0; color:#BE185D;}}
+.badge-aceptado {{background:{VERDE}; color:#1F3D00;}}
+.badge-encurso {{background:#F1E4FF; color:{MORADO_OSCURO};}}
+.badge-completado {{background:{VERDE}; color:#1F3D00;}}
+.badge-calificado {{background:#EAF7EA; color:#1C7C33;}}
+.badge-cancelado {{background:#FFE4E4; color:#B91C1C;}}
+
+/* Logo Homyfix */
+.homyfix-logo-login {{
+    display: flex;
+    justify-content: center;
+    margin-bottom: 0.3rem;
+}}
+.homyfix-logo-sidebar {{
+    display: flex;
+    justify-content: center;
+    padding: 0.4rem 0 0.8rem 0;
+}}
+
+/* Botones primarios con el naranja de marca y texto oscuro para buen contraste */
+.stButton > button[kind="primary"], .stFormSubmitButton > button {{
+    background-color: {NARANJA};
+    color: #0B1F3A;
+    border: none;
+    font-weight: 700;
+}}
+.stButton > button[kind="primary"]:hover, .stFormSubmitButton > button:hover {{
+    background-color: #E68A00;
+    color: #0B1F3A;
+}}
 </style>
 """
 
@@ -52,6 +84,17 @@ def encabezado(titulo: str, subtitulo: str = ""):
     st.markdown(f"<p class='main-title'>{titulo}</p>", unsafe_allow_html=True)
     if subtitulo:
         st.markdown(f"<p class='sub-title'>{subtitulo}</p>", unsafe_allow_html=True)
+
+
+def logo(ancho: int = 160, centrado: bool = True):
+    """Muestra el logo de Homyfix. Usar en el login (grande) y en el sidebar (chico)."""
+    clase = "homyfix-logo-login" if centrado else "homyfix-logo-sidebar"
+    if centrado:
+        _, col, _ = st.columns([1, 1, 1])
+        with col:
+            st.image("assets/logo.png", width=ancho)
+    else:
+        st.image("assets/logo.png", width=ancho)
 
 
 _BADGE_CLASE = {

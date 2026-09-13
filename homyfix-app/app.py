@@ -4,7 +4,7 @@ from modulos.config import (
     inicializar_session_state, iniciar_sesion, cerrar_sesion,
     ADMIN_OPERATIVO, ADMIN_SOCIO, TECNICO, CLIENTE,
 )
-from modulos.estilos import aplicar_estilos
+from modulos.estilos import aplicar_estilos, logo
 from modulos import datos
 from modulos.datos_demo import USUARIOS_DEMO
 from modulos import admin_operativo, admin_socio, portal_tecnico, portal_cliente, registro
@@ -17,8 +17,9 @@ aplicar_estilos()
 
 
 def pantalla_login():
+    logo(ancho=170)
     st.markdown(
-        "<h1 style='text-align:center; color:#0B1F3A;'>🧰 Homyfix</h1>"
+        "<h1 style='text-align:center; color:#13499C; margin-top:0;'>Homyfix</h1>"
         "<p style='text-align:center; color:#5B6B82;'>Tu hogar en manos seguras</p>",
         unsafe_allow_html=True,
     )
@@ -60,6 +61,7 @@ def app_autenticada():
         if st.button("Cerrar sesión", use_container_width=True):
             cerrar_sesion()
             st.rerun()
+        logo(ancho=110, centrado=False)
         st.divider()
 
     rol = st.session_state.rol
