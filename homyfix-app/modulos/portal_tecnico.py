@@ -1,6 +1,20 @@
+import pandas as pd
 import streamlit as st
 from modulos import datos
 from modulos.estilos import encabezado, badge_estatus
+
+
+def _o_default(valor, default=0):
+    """NaN/None -> default (evita crashes cuando la celda en Sheets está en
+    blanco, p. ej. un técnico que aún no tiene calificaciones/rechazos)."""
+    if valor is None:
+        return default
+    try:
+        if pd.isna(valor):
+            return default
+    except (TypeError, ValueError):
+        pass
+    return valor
 
 MEMBRESIA_MXN = 150
 
@@ -27,8 +41,9 @@ def pagina():
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Estatus", mi_fila.estatus)
     c2.metric("Membresía", "Al corriente" if mi_fila.membresia_al_corriente else "Pendiente de pago")
-    c3.metric("Calificación", mi_fila.calificacion_prom or "Sin calificar")
-    c4.metric("Rechazos", int(mi_fila.get("rechazos", 0) or 0) if hasattr(mi_fila, "get") else 0)
+    c3.metric("Calificación", _o_default(mi_fila.calificacion_prom, "Sin calificar"))
+    rechazos = _o_default(mi_fila.get("rechazos") if hasattr(mi_fila, "get") else getattr(mi_fila, "rechazos", 0), 0)
+    c4.metric("Rechazos", int(rechazos))
 
     if not mi_fila.membresia_al_corriente:
         st.warning(f"Tu cuota mensual de ${MEMBRESIA_MXN} MXN está pendiente. Recuerda pagarla antes del corte para seguir recibiendo alertas de trabajo.")
@@ -109,7 +124,9 @@ def pagina():
     with tab_puja:
         en_puja = solicitudes[solicitudes.estatus == "En Puja"]
         en_puja = en_puja[en_puja.categoria == mi_fila.especialidad]
-        en_puja = en_puja[en_puja.apply(lambda f: tecnico_id not in _tecnicos_rechazados(f), axis=1)]
+        if not en_puja.empty:
+            mascara = [tecnico_id not in _tecnicos_rechazados(fila) for _, fila in en_puja.iterrows()]
+            en_puja = en_puja[mascara]
 
         if en_puja.empty:
             st.info("No hay oportunidades en puja para tu especialidad en este momento.")
