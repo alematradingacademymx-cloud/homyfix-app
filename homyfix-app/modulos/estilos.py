@@ -1,6 +1,10 @@
 """Estilos compartidos de la app (siguiendo el mismo patrón del portal educativo)."""
 
+from pathlib import Path
+
 import streamlit as st
+
+_LOGO_PATH = Path(__file__).resolve().parent.parent / "assets" / "logo.png"
 
 # Paleta de marca Homyfix
 AZUL_PRIMARIO = "#13499C"   # azul del logo — títulos, marca, sidebar
@@ -88,13 +92,14 @@ def encabezado(titulo: str, subtitulo: str = ""):
 
 def logo(ancho: int = 160, centrado: bool = True):
     """Muestra el logo de Homyfix. Usar en el login (grande) y en el sidebar (chico)."""
-    clase = "homyfix-logo-login" if centrado else "homyfix-logo-sidebar"
+    if not _LOGO_PATH.exists():
+        return
     if centrado:
         _, col, _ = st.columns([1, 1, 1])
         with col:
-            st.image("assets/logo.png", width=ancho)
+            st.image(str(_LOGO_PATH), width=ancho)
     else:
-        st.image("assets/logo.png", width=ancho)
+        st.image(str(_LOGO_PATH), width=ancho)
 
 
 _BADGE_CLASE = {
