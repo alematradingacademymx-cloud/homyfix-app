@@ -111,6 +111,9 @@ _COLS_SOLICITUDES_MAP = {
     "CodigoSeguridad": "codigo_seguridad", "TipoCotizacion": "tipo_cotizacion",
     "CostoVisita": "costo_visita", "CostoReparacion": "costo_reparacion",
     "Diagnostico": "diagnostico", "FotoURL": "foto_url", "TecnicosRechazados": "tecnicos_rechazados",
+    "ClienteLat": "cliente_lat", "ClienteLng": "cliente_lng",
+    "TecnicoLat": "tecnico_lat", "TecnicoLng": "tecnico_lng",
+    "UbicacionTecnicoHora": "ubicacion_tecnico_hora",
 }
 
 _COLUMNAS_SOLICITUDES = list(_COLS_SOLICITUDES_MAP.values())
@@ -125,19 +128,28 @@ def obtener_solicitudes() -> pd.DataFrame:
     df = pd.DataFrame(datos).rename(columns=_COLS_SOLICITUDES_MAP)
     if "creado" in df.columns:
         df["creado"] = pd.to_datetime(df["creado"], errors="coerce")
-    for col in ("costo", "costo_visita", "costo_reparacion", "calificacion"):
+    for col in ("costo", "costo_visita", "costo_reparacion", "calificacion",
+                "cliente_lat", "cliente_lng", "tecnico_lat", "tecnico_lng"):
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
     return df
 
 
-def crear_solicitud(cliente_id, cliente_nombre, categoria, zona, descripcion, urgencia):
+def crear_solicitud(cliente_id, cliente_nombre, categoria, zona, descripcion, urgencia,
+                     cliente_lat=None, cliente_lng=None):
     resp = _post(
         "crear_solicitud", cliente_id=cliente_id, cliente_nombre=cliente_nombre,
         categoria=categoria, zona=zona, descripcion=descripcion, urgencia=urgencia,
+        cliente_lat=cliente_lat if cliente_lat is not None else "",
+        cliente_lng=cliente_lng if cliente_lng is not None else "",
     )
     _invalidar_cache()
     return resp.get("solicitud_id")
+
+
+def actualizar_ubicacion_tecnico(solicitud_id, lat, lng):
+    _post("actualizar_ubicacion_tecnico", solicitud_id=solicitud_id, lat=lat, lng=lng)
+    _invalidar_cache()
 
 
 def asignar_tecnico(solicitud_id, tecnico_id, costo=None):

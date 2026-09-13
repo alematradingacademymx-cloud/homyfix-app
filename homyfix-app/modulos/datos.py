@@ -58,8 +58,16 @@ def obtener_solicitudes():
     return _backend().obtener_solicitudes()
 
 
-def crear_solicitud(cliente_id, cliente_nombre, categoria, zona, descripcion, urgencia):
-    return _backend().crear_solicitud(cliente_id, cliente_nombre, categoria, zona, descripcion, urgencia)
+def crear_solicitud(cliente_id, cliente_nombre, categoria, zona, descripcion, urgencia,
+                     cliente_lat=None, cliente_lng=None):
+    return _backend().crear_solicitud(
+        cliente_id, cliente_nombre, categoria, zona, descripcion, urgencia,
+        cliente_lat=cliente_lat, cliente_lng=cliente_lng,
+    )
+
+
+def actualizar_ubicacion_tecnico(solicitud_id, lat, lng):
+    return _backend().actualizar_ubicacion_tecnico(solicitud_id, lat, lng)
 
 
 def asignar_tecnico(solicitud_id, tecnico_id, costo=None):

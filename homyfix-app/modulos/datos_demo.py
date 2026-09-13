@@ -86,14 +86,18 @@ def _semilla_solicitudes():
          "estatus": "Completado", "tecnico_id": "T-002", "costo": 450,
          "codigo_seguridad": "482913", "tipo_cotizacion": "Directo", "costo_visita": None,
          "costo_reparacion": 450, "diagnostico": None, "foto_url": None, "tecnicos_rechazados": "",
-         "calificacion": None, "creado": ahora - timedelta(days=2)},
+         "calificacion": None, "creado": ahora - timedelta(days=2),
+         "cliente_lat": None, "cliente_lng": None, "tecnico_lat": None, "tecnico_lng": None,
+         "ubicacion_tecnico_hora": None},
         {"solicitud_id": "S-1002", "cliente_id": "C-002", "cliente_nombre": "Juan Ramírez",
          "categoria": "Electricidad", "zona": "Centro",
          "descripcion": "Corto circuito en la cocina", "urgencia": "Para hoy",
          "estatus": "Pendiente", "tecnico_id": None, "costo": None,
          "codigo_seguridad": "731064", "tipo_cotizacion": None, "costo_visita": None,
          "costo_reparacion": None, "diagnostico": None, "foto_url": None, "tecnicos_rechazados": "",
-         "calificacion": None, "creado": ahora - timedelta(hours=3)},
+         "calificacion": None, "creado": ahora - timedelta(hours=3),
+         "cliente_lat": None, "cliente_lng": None, "tecnico_lat": None, "tecnico_lng": None,
+         "ubicacion_tecnico_hora": None},
     ])
 
 
@@ -187,7 +191,8 @@ def obtener_solicitudes() -> pd.DataFrame:
     return st.session_state.solicitudes_df
 
 
-def crear_solicitud(cliente_id, cliente_nombre, categoria, zona, descripcion, urgencia):
+def crear_solicitud(cliente_id, cliente_nombre, categoria, zona, descripcion, urgencia,
+                     cliente_lat=None, cliente_lng=None):
     df = st.session_state.solicitudes_df
     nuevo_id = f"S-{1000 + len(df) + 1}"
     fila = {"solicitud_id": nuevo_id, "cliente_id": cliente_id, "cliente_nombre": cliente_nombre,
@@ -195,9 +200,18 @@ def crear_solicitud(cliente_id, cliente_nombre, categoria, zona, descripcion, ur
             "estatus": "Pendiente", "tecnico_id": None, "costo": None,
             "codigo_seguridad": _generar_codigo(), "tipo_cotizacion": None, "costo_visita": None,
             "costo_reparacion": None, "diagnostico": None, "foto_url": None, "tecnicos_rechazados": "",
-            "calificacion": None, "creado": datetime.now()}
+            "calificacion": None, "creado": datetime.now(),
+            "cliente_lat": cliente_lat, "cliente_lng": cliente_lng,
+            "tecnico_lat": None, "tecnico_lng": None, "ubicacion_tecnico_hora": None}
     st.session_state.solicitudes_df = pd.concat([df, pd.DataFrame([fila])], ignore_index=True)
     return nuevo_id
+
+
+def actualizar_ubicacion_tecnico(solicitud_id, lat, lng):
+    df = st.session_state.solicitudes_df
+    df.loc[df.solicitud_id == solicitud_id, "tecnico_lat"] = lat
+    df.loc[df.solicitud_id == solicitud_id, "tecnico_lng"] = lng
+    df.loc[df.solicitud_id == solicitud_id, "ubicacion_tecnico_hora"] = datetime.now()
 
 
 def asignar_tecnico(solicitud_id, tecnico_id, costo=None):

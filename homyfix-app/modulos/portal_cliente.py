@@ -1,5 +1,6 @@
+import pandas as pd
 import streamlit as st
-from modulos import datos
+from modulos import datos, geo
 from modulos.estilos import encabezado, badge_estatus
 
 
@@ -11,6 +12,19 @@ def pagina():
     tab_nueva, tab_mis = st.tabs(["🛠️ Nueva solicitud", "📋 Mis solicitudes"])
 
     with tab_nueva:
+        geo.boton_ubicacion(
+            "📍 Compartir mi ubicación exacta",
+            key="cliente_nueva_solicitud",
+            ayuda="Opcional pero recomendado: así el técnico ve el tiempo estimado de llegada real hacia tu domicilio.",
+        )
+        ubicacion = geo.leer_ubicacion_de_url("cliente_nueva_solicitud")
+        if ubicacion:
+            st.session_state["nueva_solicitud_lat"] = ubicacion[0]
+            st.session_state["nueva_solicitud_lng"] = ubicacion[1]
+            st.rerun()
+        if st.session_state.get("nueva_solicitud_lat"):
+            st.success("📍 Ubicación compartida — se guardará junto con tu solicitud.")
+
         with st.form("nueva_solicitud_cliente", clear_on_submit=True):
             categoria = st.selectbox("¿Qué necesitas?", ["Plomería", "Electricidad", "Pintura", "Albañilería", "Carpintería", "Otro"])
             zona = st.text_input("Tu colonia / zona")
@@ -18,7 +32,13 @@ def pagina():
             descripcion = st.text_area("Cuéntanos qué pasó")
             if st.form_submit_button("Enviar solicitud"):
                 if zona and descripcion:
-                    nuevo_id = datos.crear_solicitud(cliente_id, nombre, categoria, zona, descripcion, urgencia)
+                    nuevo_id = datos.crear_solicitud(
+                        cliente_id, nombre, categoria, zona, descripcion, urgencia,
+                        cliente_lat=st.session_state.get("nueva_solicitud_lat"),
+                        cliente_lng=st.session_state.get("nueva_solicitud_lng"),
+                    )
+                    st.session_state.pop("nueva_solicitud_lat", None)
+                    st.session_state.pop("nueva_solicitud_lng", None)
                     st.success(f"¡Listo! Tu solicitud {nuevo_id} fue enviada. Te avisaremos en cuanto tengamos un técnico cerca.")
                     st.rerun()
                 else:
@@ -69,6 +89,23 @@ def pagina():
                             c2.caption(f"Técnico asignado: {t.nombre} · Costo acordado: ${fila.costo_reparacion}")
                         else:
                             st.caption(f"Técnico asignado: {t.nombre} · Costo acordado: ${fila.costo_reparacion}")
+
+                if fila.estatus in ("Aceptado", "En curso"):
+                    cli_lat, cli_lng = fila.get("cliente_lat"), fila.get("cliente_lng")
+                    tec_lat, tec_lng = fila.get("tecnico_lat"), fila.get("tecnico_lng")
+                    tiene_cliente = cli_lat not in (None, "") and not pd.isna(cli_lat)
+                    tiene_tecnico = tec_lat not in (None, "") and not pd.isna(tec_lat)
+                    if not tiene_cliente:
+                        st.caption("💡 Comparte tu ubicación al crear una solicitud para poder ver aquí el mapa y el tiempo estimado de llegada del técnico.")
+                    elif not tiene_tecnico:
+                        st.caption("📍 El técnico todavía no ha compartido su ubicación en camino.")
+                    else:
+                        eta = geo.calcular_eta(tec_lat, tec_lng, cli_lat, cli_lng)
+                        if eta:
+                            st.info(f"🚗 El técnico está a {eta['distancia_km']:.1f} km · tiempo estimado de llegada: **{eta['duracion_min']:.0f} min**")
+                        else:
+                            st.caption("🚗 El técnico ya está en camino (tiempo estimado no disponible por ahora).")
+                        geo.mostrar_mapa(tec_lat, tec_lng, cli_lat, cli_lng, ruta=eta.get("ruta") if eta else None, key=f"mapa_{fila.solicitud_id}")
 
                 if fila.estatus == "Completado":
                     etiqueta = "¿Cómo calificarías la visita y la compostura?" if fila.tipo_cotizacion == "Visita" else "¿Cómo calificarías la compostura?"

@@ -1,6 +1,6 @@
 import pandas as pd
 import streamlit as st
-from modulos import datos
+from modulos import datos, geo
 from modulos.estilos import encabezado, badge_estatus
 
 
@@ -66,6 +66,21 @@ def pagina():
 
                 if fila.estatus in ("Asignado", "En Visita", "Cotizado", "Aceptado", "En curso"):
                     st.info(f"🔐 Código de seguridad del cliente: **{fila.codigo_seguridad}** — pídeselo al llegar para confirmar que estás en la casa correcta.")
+
+                if fila.estatus in ("Aceptado", "En curso"):
+                    hora = fila.get("ubicacion_tecnico_hora")
+                    if hora and not pd.isna(hora):
+                        st.caption(f"📍 Última ubicación compartida: {hora}")
+                    geo.boton_ubicacion(
+                        "📍 Compartir mi ubicación (voy en camino)",
+                        key=f"tec_ubicacion_{fila.solicitud_id}",
+                        ayuda="Actualiza tu posición para que el cliente vea el mapa y el tiempo estimado de llegada.",
+                    )
+                    nueva_ubic = geo.leer_ubicacion_de_url(f"tec_ubicacion_{fila.solicitud_id}")
+                    if nueva_ubic:
+                        datos.actualizar_ubicacion_tecnico(fila.solicitud_id, nueva_ubic[0], nueva_ubic[1])
+                        st.success("Ubicación actualizada, el cliente ya la puede ver.")
+                        st.rerun()
 
                 if fila.estatus == "Asignado":
                     modo = st.radio(
