@@ -56,16 +56,16 @@ header[data-testid="stHeader"] {{background: transparent;}}
     font-size: 0.78rem;
     font-weight: 600;
 }}
-.badge-pendiente {{background:#FFF1E0; color:#B5610A;}}
-.badge-asignado {{background:#E4EEFF; color:{AZUL_PRIMARIO};}}
-.badge-visita {{background:#EDE4FF; color:{MORADO_CLARO};}}
-.badge-cotizado {{background:#FFF3D6; color:#8A5A00;}}
-.badge-puja {{background:#FFE4F0; color:#BE185D;}}
-.badge-aceptado {{background:{VERDE}; color:#1F3D00;}}
-.badge-encurso {{background:#F1E4FF; color:{MORADO_OSCURO};}}
-.badge-completado {{background:{VERDE}; color:#1F3D00;}}
-.badge-calificado {{background:#EAF7EA; color:#1C7C33;}}
-.badge-cancelado {{background:#FFE4E4; color:#B91C1C;}}
+.badge-pendiente {{background:#FFF1E0 !important; color:#B5610A !important;}}
+.badge-asignado {{background:#E4EEFF !important; color:{AZUL_PRIMARIO} !important;}}
+.badge-visita {{background:#EDE4FF !important; color:{MORADO_CLARO} !important;}}
+.badge-cotizado {{background:#FFF3D6 !important; color:#8A5A00 !important;}}
+.badge-puja {{background:#FFE4F0 !important; color:#BE185D !important;}}
+.badge-aceptado {{background:{VERDE} !important; color:#1F3D00 !important;}}
+.badge-encurso {{background:#F1E4FF !important; color:{MORADO_OSCURO} !important;}}
+.badge-completado {{background:{VERDE} !important; color:#1F3D00 !important;}}
+.badge-calificado {{background:#EAF7EA !important; color:#1C7C33 !important;}}
+.badge-cancelado {{background:#FFE4E4 !important; color:#B91C1C !important;}}
 
 /* Logo Homyfix */
 .homyfix-logo-login {{
@@ -79,16 +79,70 @@ header[data-testid="stHeader"] {{background: transparent;}}
     padding: 0.4rem 0 0.8rem 0;
 }}
 
-/* Botones primarios con el naranja de marca y texto oscuro para buen contraste */
-.stButton > button[kind="primary"], .stFormSubmitButton > button {{
-    background-color: {NARANJA};
-    color: #0B1F3A;
-    border: none;
-    font-weight: 700;
+/* Botones de acción: naranja de marca, letras blancas */
+.stButton > button, .stFormSubmitButton > button, .stDownloadButton > button {{
+    background-color: {NARANJA} !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    font-weight: 700 !important;
+    border-radius: 8px !important;
 }}
-.stButton > button[kind="primary"]:hover, .stFormSubmitButton > button:hover {{
-    background-color: #E68A00;
-    color: #0B1F3A;
+.stButton > button:hover, .stFormSubmitButton > button:hover, .stDownloadButton > button:hover {{
+    background-color: #E68A00 !important;
+    color: #FFFFFF !important;
+}}
+.stButton > button:disabled, .stFormSubmitButton > button:disabled {{
+    background-color: #FFD699 !important;
+    color: #7A5200 !important;
+}}
+
+/* Cajas / paneles con borde: relleno azul, letras blancas, para que resalten */
+[data-testid="stVerticalBlockBorderWrapper"] {{
+    background: {AZUL_SECUNDARIO} !important;
+    border: 1px solid {AZUL_PRIMARIO} !important;
+    border-radius: 14px !important;
+    padding: 0.3rem 0.2rem !important;
+}}
+[data-testid="stVerticalBlockBorderWrapper"] p,
+[data-testid="stVerticalBlockBorderWrapper"] span:not(.badge),
+[data-testid="stVerticalBlockBorderWrapper"] label,
+[data-testid="stVerticalBlockBorderWrapper"] h1,
+[data-testid="stVerticalBlockBorderWrapper"] h2,
+[data-testid="stVerticalBlockBorderWrapper"] h3,
+[data-testid="stVerticalBlockBorderWrapper"] h4,
+[data-testid="stVerticalBlockBorderWrapper"] li,
+[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stCaptionContainer"],
+[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stMarkdownContainer"] {{
+    color: #FFFFFF !important;
+}}
+[data-testid="stExpander"] {{
+    background: {AZUL_SECUNDARIO} !important;
+    border: 1px solid {AZUL_PRIMARIO} !important;
+    border-radius: 14px !important;
+}}
+[data-testid="stExpander"] p,
+[data-testid="stExpander"] span,
+[data-testid="stExpander"] li,
+[data-testid="stExpander"] summary {{
+    color: #FFFFFF !important;
+}}
+
+/* Campos de texto: relleno blanco, contorno naranja, letras negras */
+.stTextInput input, .stTextArea textarea, .stNumberInput input,
+.stDateInput input, .stTimeInput input,
+[data-baseweb="select"] > div {{
+    background-color: #FFFFFF !important;
+    color: #0B1F3A !important;
+    border: 2px solid {NARANJA} !important;
+    border-radius: 8px !important;
+}}
+[data-baseweb="select"] span, [data-baseweb="select"] div {{
+    color: #0B1F3A !important;
+}}
+[data-testid="stFileUploaderDropzone"] {{
+    background-color: #FFFFFF !important;
+    border: 2px dashed {NARANJA} !important;
+    border-radius: 8px !important;
 }}
 </style>
 """
