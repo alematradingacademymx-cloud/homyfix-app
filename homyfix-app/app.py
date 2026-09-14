@@ -1,4 +1,7 @@
+from pathlib import Path
+
 import streamlit as st
+from PIL import Image
 
 from modulos.config import (
     inicializar_session_state, restaurar_sesion, iniciar_sesion, cerrar_sesion,
@@ -9,7 +12,10 @@ from modulos import datos
 from modulos.datos_demo import USUARIOS_DEMO
 from modulos import admin_operativo, admin_socio, portal_tecnico, portal_cliente, registro
 
-st.set_page_config(page_title="Homyfix", page_icon="🧰", layout="wide")
+_FAVICON_PATH = Path(__file__).resolve().parent / "assets" / "favicon.png"
+_favicon = Image.open(_FAVICON_PATH) if _FAVICON_PATH.exists() else "🧰"
+
+st.set_page_config(page_title="Homyfix", page_icon=_favicon, layout="wide")
 
 inicializar_session_state()
 datos.inicializar_datos()
